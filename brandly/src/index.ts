@@ -2,13 +2,18 @@ import { tool } from "@opencode-ai/plugin";
 import { z } from "zod";
 import type { Plugin } from "@opencode-ai/plugin";
 import { mkdir, writeFile, readFile, rename, appendFile, readdir } from "fs/promises";
-import { join } from "path";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
 import { randomUUID } from "crypto";
 import { CostTracker } from "./cost-tracker";
 import { Memory } from "./memory";
 import { ProjectState, VideoStyle } from "./types";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Resolve agent files relative to this module (works in both dev and packaged installs)
+const _moduleDir = dirname(fileURLToPath(import.meta.url));
+const AGENT_DIR = join(_moduleDir, "..", "agents");
 
 // C4 fix: single source of truth for pipeline phases
 const PHASE_ORDER = [
@@ -386,7 +391,6 @@ const BrandlyPlugin: Plugin = async ({ client, project, directory, $ }) => {
           return { error: "Project not found. Check the project ID." };
         }
 
-        const agentDir = join(directory, "plugins", "brandly", "agents");
         const currentPhase = state.currentPhase;
 
         // C5 fix: validate phase is handled specially (MCP call, not subagent)
@@ -420,7 +424,7 @@ const BrandlyPlugin: Plugin = async ({ client, project, directory, $ }) => {
           };
         }
 
-        const agentPath = join(agentDir, agentFile);
+        const agentPath = join(AGENT_DIR, agentFile);
         let agentPrompt: string;
         try {
           agentPrompt = await readFile(agentPath, "utf-8");
@@ -693,8 +697,7 @@ ${agentPrompt}
           .describe("Optional user brief or product idea to help frame the analysis"),
       }),
       execute: async (args, ctx) => {
-        const agentDir = join(directory, "plugins", "brandly", "agents");
-        const agentPath = join(agentDir, "image_analyzer.md");
+        const agentPath = join(AGENT_DIR, "image_analyzer.md");
         let agentPrompt: string;
         try {
           agentPrompt = await readFile(agentPath, "utf-8");
