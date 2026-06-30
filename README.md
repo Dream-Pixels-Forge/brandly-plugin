@@ -1,4 +1,5 @@
 # Brandly Plugin
+<img width="1983" height="793" alt="banner" src="https://github.com/user-attachments/assets/246d040d-8029-445f-b3c9-f4b68c6c78ce" />
 
 AI product video orchestrator for OpenCode. Turns product ideas into platform-ready marketing videos using a multi-agent pipeline.
 
