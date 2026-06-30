@@ -1,5 +1,4 @@
 import { tool } from "@opencode-ai/plugin";
-import { z } from "zod";
 import type { Plugin } from "@opencode-ai/plugin";
 import { mkdir, writeFile, readFile, rename, appendFile, readdir } from "fs/promises";
 import { join, dirname } from "path";
@@ -7,7 +6,6 @@ import { fileURLToPath } from "url";
 import { randomUUID } from "crypto";
 import { CostTracker } from "./cost-tracker";
 import { Memory } from "./memory";
-import { ProjectState, VideoStyle } from "./types";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -200,27 +198,20 @@ const BrandlyPlugin: Plugin = async ({ client, project, directory, $ }) => {
     brandly_start: tool({
       description:
         "Start a new Brandly video project. Provide a product idea (and optionally an image) to kick off the agent pipeline. Creates a new project directory and returns the project ID.",
-      args: z.object({
-        idea: z.string().describe("Product idea, concept, or brief"),
-        productName: z.string().describe("Name of the product"),
-        imagePath: z
-          .string()
-          .optional()
-          .describe("Optional path to a product image"),
-        targetPlatforms: z
-          .array(z.enum(["tiktok", "instagram", "youtube", "all"]))
+      args: {
+        idea: tool.schema.string().describe("Product idea, concept, or brief"),
+        productName: tool.schema.string().describe("Name of the product"),
+        imagePath: tool.schema.string().optional().describe("Optional path to a product image"),
+        targetPlatforms: tool.schema
+          .array(tool.schema.enum(["tiktok", "instagram", "youtube", "all"]))
           .default(["tiktok", "instagram"])
           .describe("Target social platforms"),
-        budgetCredits: z
-          .number()
-          .positive()
-          .default(500)
-          .describe("Max credits to spend on this project"),
-        style: z
+        budgetCredits: tool.schema.number().gt(0).default(500).describe("Max credits to spend on this project"),
+        style: tool.schema
           .enum(["cinematic", "ugc", "montage", "multi_shot", "continuous", "unboxing", "lifestyle"])
           .optional()
           .describe("Video style preference"),
-      }),
+      },
       execute: async (args, ctx) => {
         const id = randomUUID();
         await createProjectStructure(id);
@@ -269,33 +260,33 @@ const BrandlyPlugin: Plugin = async ({ client, project, directory, $ }) => {
         await logAction(id, "project_created", `Product: ${args.productName}`);
 
         // H5 fix: do NOT call recordProjectCompletion at creation time
-        return {
+        return JSON.stringify({
           projectID: id,
           status: "created",
           projectPath: getProjectDir(id),
           artifactPaths: state.artifactPaths,
           genDirs: state.genDirs,
           message: `Project "${args.productName}" created. Info in .brandly/projects/${id}/. Images to imagen/${id}/. Videos to videgen/${id}/. Audio to audgen/${id}/. Use brandly_run_project to start the agent pipeline.`,
-        };
+        });
       },
     }),
 
     brandly_status: tool({
       description:
         "Show the current status of a Brandly project — which phase it's in, budget spent, virality score, and artifacts produced.",
-      args: z.object({
-        projectID: z.string().describe("The project UUID"),
-      }),
+      args: {
+        projectID: tool.schema.string().describe("The project UUID"),
+      },
       execute: async (args, ctx) => {
         if (!isValidProjectId(args.projectID)) {
-          return { error: "Invalid project ID format." };
+          return JSON.stringify({ error: "Invalid project ID format." });
         }
         const state = await readProject(args.projectID);
         if (!state) {
-          return { error: "Project not found. Check the project ID." };
+          return JSON.stringify({ error: "Project not found. Check the project ID." });
         }
         // L1/L2 fix: provide defaults for fields that may be undefined
-        return {
+        return JSON.stringify({
           projectName: state.productName,
           phase: state.currentPhase,
           creditsSpent: state.creditsSpent ?? 0,
@@ -306,48 +297,38 @@ const BrandlyPlugin: Plugin = async ({ client, project, directory, $ }) => {
           finalCut: state.finalCutPath ?? "not yet rendered",
           publishPaths: state.publishPaths ?? {},
           costLog: (state.costLog ?? []).slice(-5),
-        };
+        });
       },
     }),
 
     brandly_approve: tool({
       description:
         "Approve the current phase output and advance the pipeline to the next phase. Must be called after each agent completes to proceed.",
-      args: z.object({
-        projectID: z.string().describe("The project UUID"),
-        phase: z
-          .enum([
-            "init",
-            "trends",
-            "concept",
-            "script",
-            "asset",
-            "audio",
-            "validate",
-            "publish",
-            "done",
-          ])
+      args: {
+        projectID: tool.schema.string().describe("The project UUID"),
+        phase: tool.schema
+          .enum(["init", "trends", "concept", "script", "asset", "audio", "validate", "publish", "done"])
           .describe("The phase being approved"),
-      }),
+      },
       execute: async (args, ctx) => {
         if (!isValidProjectId(args.projectID)) {
-          return { error: "Invalid project ID format." };
+          return JSON.stringify({ error: "Invalid project ID format." });
         }
         const state = await readProject(args.projectID);
         if (!state) {
-          return { error: "Project not found. Check the project ID." };
+          return JSON.stringify({ error: "Project not found. Check the project ID." });
         }
 
         const currentIdx = PHASE_ORDER.indexOf(state.currentPhase as any);
         const approvedIdx = PHASE_ORDER.indexOf(args.phase as any);
 
         if (approvedIdx === -1) {
-          return { error: `Unknown phase "${args.phase}".` };
+          return JSON.stringify({ error: `Unknown phase "${args.phase}".` });
         }
         if (approvedIdx !== currentIdx) {
-          return {
+          return JSON.stringify({
             error: `Cannot approve phase "${args.phase}" — current phase is "${state.currentPhase}".`,
-          };
+          });
         }
 
         if (currentIdx < PHASE_ORDER.length - 1) {
@@ -368,27 +349,27 @@ const BrandlyPlugin: Plugin = async ({ client, project, directory, $ }) => {
           );
         }
 
-        return {
+        return JSON.stringify({
           status: "approved",
           nextPhase: state.currentPhase,
           message: `Phase "${args.phase}" approved. Pipeline advancing to "${state.currentPhase}".`,
-        };
+        });
       },
     }),
 
     brandly_run_project: tool({
       description:
         "Run the next phase of the Brandly pipeline. Reads the current phase and dispatches the appropriate agent subagent. Call after brandly_approve to advance the pipeline.",
-      args: z.object({
-        projectID: z.string().describe("The project UUID"),
-      }),
+      args: {
+        projectID: tool.schema.string().describe("The project UUID"),
+      },
       execute: async (args, ctx) => {
         if (!isValidProjectId(args.projectID)) {
-          return { error: "Invalid project ID format." };
+          return JSON.stringify({ error: "Invalid project ID format." });
         }
         const state = await readProject(args.projectID);
         if (!state) {
-          return { error: "Project not found. Check the project ID." };
+          return JSON.stringify({ error: "Project not found. Check the project ID." });
         }
 
         const currentPhase = state.currentPhase;
@@ -400,9 +381,9 @@ const BrandlyPlugin: Plugin = async ({ client, project, directory, $ }) => {
         }
 
         if (currentPhase === "done") {
-          return {
+          return JSON.stringify({
             error: `Pipeline is complete. No more phases to run.`,
-          };
+          });
         }
 
         // C1 fix: budget check before expensive phases
@@ -410,18 +391,18 @@ const BrandlyPlugin: Plugin = async ({ client, project, directory, $ }) => {
         if (expensivePhases.includes(currentPhase)) {
           const budget = await costTracker.canAfford(args.projectID, 1);
           if (!budget.allowed) {
-            return {
+            return JSON.stringify({
               error: `Budget exhausted. ${state.creditsSpent}/${state.budgetCredits} credits spent. Cannot run phase "${currentPhase}".`,
               budgetRemaining: budget.remaining,
-            };
+            });
           }
         }
 
         const agentFile = PHASE_AGENT_MAP[currentPhase];
         if (!agentFile) {
-          return {
+          return JSON.stringify({
             error: `No agent for phase "${currentPhase}". Use brandly_approve first.`,
-          };
+          });
         }
 
         const agentPath = join(AGENT_DIR, agentFile);
@@ -429,7 +410,7 @@ const BrandlyPlugin: Plugin = async ({ client, project, directory, $ }) => {
         try {
           agentPrompt = await readFile(agentPath, "utf-8");
         } catch {
-          return { error: `Agent file "${agentFile}" not found at ${agentPath}.` };
+          return JSON.stringify({ error: `Agent file "${agentFile}" not found at ${agentPath}.` });
         }
 
         const artifactPaths = getArtifactPathsForPhase(currentPhase, args.projectID);
@@ -482,22 +463,22 @@ ${agentPrompt}
 
         await logAction(args.projectID, `phase_${currentPhase}_started`, agentFile);
 
-        return dispatchInstructions;
+        return JSON.stringify(dispatchInstructions);
       },
     }),
 
     brandly_estimate: tool({
       description:
         "Estimate credit cost before starting a Brandly project. Shows a breakdown by phase so you can decide on budget.",
-      args: z.object({
-        idea: z.string().describe("Product idea"),
-        productName: z.string().describe("Product name"),
-        style: z
+      args: {
+        idea: tool.schema.string().describe("Product idea"),
+        productName: tool.schema.string().describe("Product name"),
+        style: tool.schema
           .enum(["cinematic", "ugc", "montage", "multi_shot", "continuous", "unboxing", "lifestyle"])
           .optional()
           .describe("Video style"),
-        shotCount: z.number().min(3).max(10).default(5).describe("Number of shots"),
-      }),
+        shotCount: tool.schema.number().gte(3).lte(10).default(5).describe("Number of shots"),
+      },
       execute: async (args, ctx) => {
         const styleCosts: Record<string, number> = {
           cinematic: 35,
@@ -522,7 +503,7 @@ ${agentPrompt}
           total: shotCount * costPerShot + 30 + 15,
         };
 
-        return {
+        return JSON.stringify({
           productName: args.productName,
           style: args.style ?? "cinematic",
           shotCount,
@@ -532,31 +513,33 @@ ${agentPrompt}
             estimate.total > 300
               ? "Consider reducing shot count or using UGC style to save credits"
               : "Budget looks reasonable for this scope",
-        };
+        });
       },
     }),
 
     brandly_re_edit: tool({
       description:
         "Re-edit a specific shot in the project. Provide the shot ID and a new prompt/description. The pipeline will regenerate that shot.",
-      args: z.object({
-        projectID: z.string().describe("The project UUID"),
-        shotId: z.number().describe("The shot ID to re-edit"),
-        newPrompt: z.string().describe("New prompt for the shot"),
-        reason: z.string().describe("Why you're re-editing this shot"),
-      }),
+      args: {
+        projectID: tool.schema.string().describe("The project UUID"),
+        shotId: tool.schema.number().describe("The shot ID to re-edit"),
+        newPrompt: tool.schema.string().describe("New prompt for the shot"),
+        reason: tool.schema.string().describe("Why you're re-editing this shot"),
+      },
       execute: async (args, ctx) => {
         if (!isValidProjectId(args.projectID)) {
-          return { error: "Invalid project ID format." };
+          return JSON.stringify({ error: "Invalid project ID format." });
         }
         const state = await readProject(args.projectID);
         if (!state) {
-          return { error: "Project not found." };
+          return JSON.stringify({ error: "Project not found." });
         }
 
         const shot = state.shots?.find((s: any) => s.id === args.shotId);
         if (!shot) {
-          return { error: `Shot ${args.shotId} not found. Available: ${(state.shots ?? []).map((s: any) => s.id).join(", ")}` };
+          return JSON.stringify({
+            error: `Shot ${args.shotId} not found. Available: ${(state.shots ?? []).map((s: any) => s.id).join(", ")}`,
+          });
         }
 
         // H4 fix: save old prompt BEFORE overwriting
@@ -578,31 +561,31 @@ ${agentPrompt}
         await writeProject(args.projectID, state);
         await logAction(args.projectID, "re_edit", `Shot ${args.shotId}: ${args.reason}`);
 
-        return {
+        return JSON.stringify({
           shotId: args.shotId,
           oldPrompt,
           newPrompt: args.newPrompt,
           reason: args.reason,
           message: `Shot ${args.shotId} queued for re-edit. Call brandly_run_project to regenerate.`,
-        };
+        });
       },
     }),
 
     brandly_validate: tool({
       description:
         "Run virality validation on the final video. Calls Higgsfield virality predictor to score the video and suggest improvements. Updates the project's viralityScore in state.",
-      args: z.object({
-        projectID: z.string().describe("The project UUID"),
-        videoPath: z.string().describe("Path to the rendered video"),
-      }),
+      args: {
+        projectID: tool.schema.string().describe("The project UUID"),
+        videoPath: tool.schema.string().describe("Path to the rendered video"),
+      },
       execute: async (args, ctx) => {
         if (!isValidProjectId(args.projectID)) {
-          return { error: "Invalid project ID format." };
+          return JSON.stringify({ error: "Invalid project ID format." });
         }
         // H6 fix: readProject returns null, not throw
         const state = await readProject(args.projectID);
         if (!state) {
-          return { error: "Project not found. Check the project ID." };
+          return JSON.stringify({ error: "Project not found. Check the project ID." });
         }
 
         const platforms = state.targetPlatforms ?? ["tiktok", "instagram"];
@@ -631,26 +614,26 @@ ${agentPrompt}
         await logAction(args.projectID, "validate_started", args.videoPath);
 
         // M4 fix: return object, not JSON.stringify
-        return {
+        return JSON.stringify({
           instruction: "Call the Higgsfield virality predictor MCP tool with these params",
           mcpCall,
           message: `Validate video at ${args.videoPath}. After getting the score, update the project's viralityScore field.`,
-        };
+        });
       },
     }),
 
     brandly_memory: tool({
       description:
         "View or update your Brandly preferences. Like/dislike hooks, set preferred style, or reset memory.",
-      args: z.object({
-        action: z.enum(["view", "like_hook", "dislike_hook", "reset"]).describe("Action to perform"),
-        hook: z.string().optional().describe("Hook text to like or dislike"),
-      }),
+      args: {
+        action: tool.schema.enum(["view", "like_hook", "dislike_hook", "reset"]).describe("Action to perform"),
+        hook: tool.schema.string().optional().describe("Hook text to like or dislike"),
+      },
       execute: async (args, ctx) => {
         switch (args.action) {
           case "view": {
             const prefs = await memory.getPreferences();
-            return {
+            return JSON.stringify({
               preferredStyle: prefs.preferredStyle,
               preferredModel: prefs.preferredModel,
               likedHooks: prefs.likedHooks,
@@ -658,24 +641,24 @@ ${agentPrompt}
               projectCount: prefs.projectCount,
               avgBudgetUsage: Math.round(prefs.avgBudgetUsage),
               memoryFile: join(BRANDLY_DIR, "memory.json"),
-            };
+            });
           }
           case "like_hook": {
-            if (!args.hook) return { error: "Hook text required" };
+            if (!args.hook) return JSON.stringify({ error: "Hook text required" });
             await memory.likeHook(args.hook);
-            return { message: `Liked hook: "${args.hook}"` };
+            return JSON.stringify({ message: `Liked hook: "${args.hook}"` });
           }
           case "dislike_hook": {
-            if (!args.hook) return { error: "Hook text required" };
+            if (!args.hook) return JSON.stringify({ error: "Hook text required" });
             await memory.dislikeHook(args.hook);
-            return { message: `Disliked hook: "${args.hook}"` };
+            return JSON.stringify({ message: `Disliked hook: "${args.hook}"` });
           }
           case "reset": {
             await memory.reset();
-            return { message: "Memory reset to defaults." };
+            return JSON.stringify({ message: "Memory reset to defaults." });
           }
           default:
-            return { error: `Unknown action: ${args.action}` };
+            return JSON.stringify({ error: `Unknown action: ${args.action}` });
         }
       },
     }),
@@ -683,26 +666,20 @@ ${agentPrompt}
     brandly_analyze_image: tool({
       description:
         "Deep-analyze any image — extracts subject, product details, colors, lighting, composition, style, emotion, platform suitability, and creative direction. Returns structured JSON that feeds every downstream agent. Use on any input image before starting a project.",
-      args: z.object({
-        imagePath: z
+      args: {
+        imagePath: tool.schema
           .string()
           .describe("URL, local file path, or media_id of the image to analyze"),
-        projectID: z
-          .string()
-          .optional()
-          .describe("Optional project UUID — if provided, stores analysis in project state"),
-        context: z
-          .string()
-          .optional()
-          .describe("Optional user brief or product idea to help frame the analysis"),
-      }),
+        projectID: tool.schema.string().optional().describe("Optional project UUID — if provided, stores analysis in project state"),
+        context: tool.schema.string().optional().describe("Optional user brief or product idea to help frame the analysis"),
+      },
       execute: async (args, ctx) => {
         const agentPath = join(AGENT_DIR, "image_analyzer.md");
         let agentPrompt: string;
         try {
           agentPrompt = await readFile(agentPath, "utf-8");
         } catch {
-          return { error: `Agent file "image_analyzer.md" not found at ${agentPath}.` };
+          return JSON.stringify({ error: `Agent file "image_analyzer.md" not found at ${agentPath}.` });
         }
 
         const analysisPath = args.projectID ? getAnalysisPath(args.projectID) : null;
@@ -752,7 +729,7 @@ Write the markdown file with these sections:
 
         if (args.projectID) {
           if (!isValidProjectId(args.projectID)) {
-            return { error: "Invalid project ID format." };
+            return JSON.stringify({ error: "Invalid project ID format." });
           }
           const state = await readProject(args.projectID);
           if (state) {
@@ -763,7 +740,7 @@ Write the markdown file with these sections:
           }
         }
 
-        return dispatchInstructions;
+        return JSON.stringify(dispatchInstructions);
       },
     }),
 
@@ -772,15 +749,15 @@ Write the markdown file with these sections:
     brandly_record_cost: tool({
       description:
         "Record actual credit spend for a phase operation. Call this after any MCP generation tool completes to track real costs against the project budget.",
-      args: z.object({
-        projectID: z.string().describe("The project UUID"),
-        phase: z.string().describe("Pipeline phase that incurred the cost"),
-        action: z.string().describe("What the credits were spent on"),
-        credits: z.number().positive().describe("Credits spent"),
-      }),
+      args: {
+        projectID: tool.schema.string().describe("The project UUID"),
+        phase: tool.schema.string().describe("Pipeline phase that incurred the cost"),
+        action: tool.schema.string().describe("What the credits were spent on"),
+        credits: tool.schema.number().gt(0).describe("Credits spent"),
+      },
       execute: async (args, ctx) => {
         if (!isValidProjectId(args.projectID)) {
-          return { error: "Invalid project ID format." };
+          return JSON.stringify({ error: "Invalid project ID format." });
         }
         try {
           const result = await costTracker.recordSpend(
@@ -790,14 +767,14 @@ Write the markdown file with these sections:
             args.credits
           );
           await logAction(args.projectID, "cost_recorded", `${args.phase}/${args.action}: ${args.credits} cr`);
-          return {
+          return JSON.stringify({
             recorded: args.credits,
             newTotal: result.newTotal,
             remaining: result.remaining,
             message: `Recorded ${args.credits} credits for ${args.action}. Total: ${result.newTotal}, Remaining: ${result.remaining}.`,
-          };
+          });
         } catch (error: any) {
-          return { error: error.message ?? "Failed to record cost." };
+          return JSON.stringify({ error: error.message ?? "Failed to record cost." });
         }
       },
     }),
@@ -807,32 +784,32 @@ Write the markdown file with these sections:
     brandly_save_artifact: tool({
       description:
         "Save a subagent's output to the .brandly project folder. Call this after a subagent completes to persist its markdown/json output for reusability.",
-      args: z.object({
-        projectID: z.string().describe("The project UUID"),
-        category: z
+      args: {
+        projectID: tool.schema.string().describe("The project UUID"),
+        category: tool.schema
           .enum(["analysis", "script", "storyboard", "assets", "audio"])
           .describe("Artifact category folder in .brandly/projects/{id}/"),
-        filename: z.string().describe("Filename to save as (e.g. 'script.md', 'asset-plan.json')"),
-        content: z.string().describe("The text content to save"),
-      }),
+        filename: tool.schema.string().describe("Filename to save as (e.g. 'script.md', 'asset-plan.json')"),
+        content: tool.schema.string().describe("The text content to save"),
+      },
       execute: async (args, ctx) => {
         if (!isValidProjectId(args.projectID)) {
-          return { error: "Invalid project ID format." };
+          return JSON.stringify({ error: "Invalid project ID format." });
         }
         const state = await readProject(args.projectID);
         if (!state) {
-          return { error: "Project not found." };
+          return JSON.stringify({ error: "Project not found." });
         }
         try {
           await writeArtifact(args.projectID, args.category, args.filename, args.content);
           await logAction(args.projectID, "artifact_saved", `${args.category}/${args.filename}`);
-          return {
+          return JSON.stringify({
             saved: true,
             path: join(getArtifactDir(args.projectID, args.category), args.filename),
             message: `Artifact saved to .brandly/projects/${args.projectID}/${args.category}/${args.filename}`,
-          };
+          });
         } catch (error: any) {
-          return { error: error.message ?? "Failed to save artifact." };
+          return JSON.stringify({ error: error.message ?? "Failed to save artifact." });
         }
       },
     }),
@@ -842,7 +819,7 @@ Write the markdown file with these sections:
     brandly_list_projects: tool({
       description:
         "List all Brandly projects in the .brandly folder. Shows project name, phase, budget, and creation date.",
-      args: z.object({}),
+      args: {},
       execute: async (args, ctx) => {
         try {
           const entries = await readdir(PROJECTS_DIR, { withFileTypes: true });
@@ -861,14 +838,14 @@ Write the markdown file with these sections:
               });
             }
           }
-          return {
+          return JSON.stringify({
             count: projects.length,
             projects: projects.sort((a, b) =>
               (b.createdAt ?? "").localeCompare(a.createdAt ?? "")
             ),
-          };
+          });
         } catch {
-          return { count: 0, projects: [], message: "No .brandly folder yet." };
+          return JSON.stringify({ count: 0, projects: [], message: "No .brandly folder yet." });
         }
       },
     }),
