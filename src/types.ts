@@ -56,6 +56,7 @@ export interface ProjectState {
   imagePath?: string;
   videoPath?: string;
   imageAnalysis?: any; // Image analyzer output JSON
+  imageAnalysisPending?: boolean;
 
   // Config
   productName: string;

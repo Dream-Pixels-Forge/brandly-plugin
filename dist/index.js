@@ -12484,6 +12484,7 @@ var PHASE_ORDER = [
   "script",
   "asset",
   "audio",
+  "re_edit",
   "validate",
   "publish",
   "done"
@@ -12494,8 +12495,7 @@ var PHASE_AGENT_MAP = {
   concept: "script_agent.md",
   script: "asset_agent.md",
   asset: "audio_agent.md",
-  audio: "",
-  validate: "publish_agent.md",
+  audio: "audio_agent.md",
   re_edit: "script_agent.md"
 };
 var BrandlyPlugin = async ({ client, project, directory, $ }) => {
@@ -12504,10 +12504,16 @@ var BrandlyPlugin = async ({ client, project, directory, $ }) => {
   const IMAGEN_DIR = join3(directory, "imagen");
   const VIDEOGEN_DIR = join3(directory, "videgen");
   const AUDGEN_DIR = join3(directory, "audgen");
-  await mkdir2(PROJECTS_DIR, { recursive: true });
-  await mkdir2(IMAGEN_DIR, { recursive: true });
-  await mkdir2(VIDEOGEN_DIR, { recursive: true });
-  await mkdir2(AUDGEN_DIR, { recursive: true });
+  let baseDirsEnsured = false;
+  async function ensureBaseDirs() {
+    if (baseDirsEnsured)
+      return;
+    await mkdir2(PROJECTS_DIR, { recursive: true });
+    await mkdir2(IMAGEN_DIR, { recursive: true });
+    await mkdir2(VIDEOGEN_DIR, { recursive: true });
+    await mkdir2(AUDGEN_DIR, { recursive: true });
+    baseDirsEnsured = true;
+  }
   const costTracker = new CostTracker(PROJECTS_DIR);
   const memory = new Memory(BRANDLY_DIR);
   function getProjectDir(id) {
@@ -12550,6 +12556,7 @@ var BrandlyPlugin = async ({ client, project, directory, $ }) => {
     return join3(AUDGEN_DIR, id);
   }
   async function createProjectStructure(id) {
+    await ensureBaseDirs();
     const dirs = [
       getProjectDir(id),
       getArtifactDir(id, "analysis"),
@@ -12581,6 +12588,7 @@ var BrandlyPlugin = async ({ client, project, directory, $ }) => {
     }
   }
   async function writeArtifact(id, category, filename, content) {
+    await ensureBaseDirs();
     const dir = getArtifactDir(id, category);
     await mkdir2(dir, { recursive: true });
     const targetPath = join3(dir, filename);
@@ -12596,6 +12604,7 @@ var BrandlyPlugin = async ({ client, project, directory, $ }) => {
     }
   }
   async function logAction(id, action, detail) {
+    await ensureBaseDirs();
     const logFile = join3(getProjectDir(id), "history.log");
     const entry = `[${new Date().toISOString()}] ${action}: ${detail}
 `;
@@ -12603,6 +12612,18 @@ var BrandlyPlugin = async ({ client, project, directory, $ }) => {
   }
   function isValidProjectId(id) {
     return UUID_RE.test(id);
+  }
+  function isPathAllowed(inputPath) {
+    if (!inputPath)
+      return false;
+    if (/^https?:\/\//i.test(inputPath))
+      return true;
+    if (inputPath.includes(".."))
+      return false;
+    if (/^[a-zA-Z]:\\/.test(inputPath) || inputPath.startsWith("/")) {
+      return inputPath.toLowerCase().startsWith(directory.toLowerCase());
+    }
+    return true;
   }
   function getArtifactPathsForPhase(phase, projectId) {
     switch (phase) {
@@ -12618,6 +12639,33 @@ var BrandlyPlugin = async ({ client, project, directory, $ }) => {
         return { audioPlan: getAudioPlanPath(projectId) };
       default:
         return {};
+    }
+  }
+  function getPhaseCostEstimate(phase, state) {
+    const styleCosts = {
+      cinematic: 35,
+      ugc: 25,
+      montage: 20,
+      multi_shot: 30,
+      continuous: 40,
+      unboxing: 25,
+      lifestyle: 30
+    };
+    switch (phase) {
+      case "script":
+        return 0;
+      case "asset":
+        return (state.shots?.length || 5) * (styleCosts[state.style ?? "cinematic"] ?? 30);
+      case "audio":
+        return 30;
+      case "re_edit":
+        return 30;
+      case "validate":
+        return 15;
+      case "publish":
+        return 0;
+      default:
+        return 0;
     }
   }
   const tools = {
@@ -12698,17 +12746,19 @@ var BrandlyPlugin = async ({ client, project, directory, $ }) => {
         if (!state) {
           return JSON.stringify({ error: "Project not found. Check the project ID." });
         }
+        const costSummary = await costTracker.getSummary(args.projectID);
         return JSON.stringify({
           projectName: state.productName,
           phase: state.currentPhase,
           creditsSpent: state.creditsSpent ?? 0,
           budgetCredits: state.budgetCredits ?? 0,
           budgetRemaining: (state.budgetCredits ?? 0) - (state.creditsSpent ?? 0),
-          viralityScore: state.viralityScore ?? "not yet scored",
+          viralityScore: state.viralityScore ?? null,
           shots: state.shots?.length ?? 0,
-          finalCut: state.finalCutPath ?? "not yet rendered",
+          finalCut: state.finalCutPath ?? null,
           publishPaths: state.publishPaths ?? {},
-          costLog: (state.costLog ?? []).slice(-5)
+          costLog: (state.costLog ?? []).slice(-5),
+          costSummary
         });
       }
     }),
@@ -12716,7 +12766,7 @@ var BrandlyPlugin = async ({ client, project, directory, $ }) => {
       description: "Approve the current phase output and advance the pipeline to the next phase. Must be called after each agent completes to proceed.",
       args: {
         projectID: tool.schema.string().describe("The project UUID"),
-        phase: tool.schema.enum(["init", "trends", "concept", "script", "asset", "audio", "validate", "publish", "done"]).describe("The phase being approved")
+        phase: tool.schema.enum(["init", "trends", "concept", "script", "asset", "audio", "re_edit", "validate", "publish", "done"]).describe("The phase being approved")
       },
       execute: async (args, ctx) => {
         if (!isValidProjectId(args.projectID)) {
@@ -12726,7 +12776,8 @@ var BrandlyPlugin = async ({ client, project, directory, $ }) => {
         if (!state) {
           return JSON.stringify({ error: "Project not found. Check the project ID." });
         }
-        const currentIdx = PHASE_ORDER.indexOf(state.currentPhase);
+        const phaseLiteral = state.currentPhase;
+        const currentIdx = PHASE_ORDER.indexOf(phaseLiteral);
         const approvedIdx = PHASE_ORDER.indexOf(args.phase);
         if (approvedIdx === -1) {
           return JSON.stringify({ error: `Unknown phase "${args.phase}".` });
@@ -12767,18 +12818,24 @@ var BrandlyPlugin = async ({ client, project, directory, $ }) => {
           return JSON.stringify({ error: "Project not found. Check the project ID." });
         }
         const currentPhase = state.currentPhase;
-        if (currentPhase === "audio") {}
         if (currentPhase === "done") {
           return JSON.stringify({
             error: `Pipeline is complete. No more phases to run.`
           });
         }
-        const expensivePhases = ["script", "asset", "audio"];
-        if (expensivePhases.includes(currentPhase)) {
-          const budget = await costTracker.canAfford(args.projectID, 1);
+        if (currentPhase === "validate") {
+          return JSON.stringify({
+            error: `Phase "validate" must be run using brandly_validate, not brandly_run_project.`
+          });
+        }
+        const estimatedCost = getPhaseCostEstimate(currentPhase, state);
+        const expensivePhases = ["asset", "audio", "re_edit", "validate"];
+        if (expensivePhases.includes(currentPhase) && estimatedCost > 0) {
+          const budget = await costTracker.canAfford(args.projectID, estimatedCost);
           if (!budget.allowed) {
             return JSON.stringify({
-              error: `Budget exhausted. ${state.creditsSpent}/${state.budgetCredits} credits spent. Cannot run phase "${currentPhase}".`,
+              error: `Budget exhausted. Phase "${currentPhase}" needs ~${estimatedCost} credits, but only ${budget.remaining} remain. ${state.creditsSpent}/${state.budgetCredits} credits spent.`,
+              estimatedCost,
               budgetRemaining: budget.remaining
             });
           }
@@ -12809,7 +12866,7 @@ ${state.imageAnalysis ? `## Image Analysis Available: Yes (see project state)` :
 
 ## Previous Artifacts
 ${state.viralityReport ? `- Virality report: ${state.viralityReport}` : "- No virality report yet"}
-${state.shots?.length > 0 ? `- Shots defined: ${state.shots.length}` : "- No shots yet"}
+${(state.shots?.length ?? 0) > 0 ? `- Shots defined: ${state.shots.length}` : "- No shots yet"}
 ${state.finalCutPath ? `- Final cut: ${state.finalCutPath}` : "- No final cut yet"}
 
 ## Artifact Save Paths
@@ -12942,6 +12999,16 @@ ${agentPrompt}
         if (!state) {
           return JSON.stringify({ error: "Project not found. Check the project ID." });
         }
+        if (state.currentPhase !== "validate") {
+          return JSON.stringify({
+            error: `Cannot validate: current phase is "${state.currentPhase}". Reach the validate phase first (e.g. by approving audio).`
+          });
+        }
+        if (!isPathAllowed(args.videoPath)) {
+          return JSON.stringify({
+            error: `Invalid videoPath: must be an http(s) URL or an absolute/relative path inside the workspace. Paths containing ".." or absolute paths outside the workspace are not allowed.`
+          });
+        }
         const platforms = state.targetPlatforms ?? ["tiktok", "instagram"];
         const mcpCall = {
           tool: "higgsfield_virality_predictor",
@@ -12963,11 +13030,13 @@ ${agentPrompt}
             scoreThreshold: 7
           }
         };
+        state.currentPhase = "publish";
+        await writeProject(args.projectID, state);
         await logAction(args.projectID, "validate_started", args.videoPath);
         return JSON.stringify({
           instruction: "Call the Higgsfield virality predictor MCP tool with these params",
           mcpCall,
-          message: `Validate video at ${args.videoPath}. After getting the score, update the project's viralityScore field.`
+          message: `Validate video at ${args.videoPath}. After getting the score, update the project's viralityScore field. Pipeline advanced to "publish".`
         });
       }
     }),
@@ -12978,6 +13047,9 @@ ${agentPrompt}
         hook: tool.schema.string().optional().describe("Hook text to like or dislike")
       },
       execute: async (args, ctx) => {
+        if (args.action !== "view") {
+          await ensureBaseDirs();
+        }
         switch (args.action) {
           case "view": {
             const prefs = await memory.getPreferences();
@@ -12987,7 +13059,7 @@ ${agentPrompt}
               likedHooks: prefs.likedHooks,
               dislikedHooks: prefs.dislikedHooks,
               projectCount: prefs.projectCount,
-              avgBudgetUsage: Math.round(prefs.avgBudgetUsage),
+              avgBudgetUsage: Math.round(prefs.avgBudgetUsage * 100) / 100,
               memoryFile: join3(BRANDLY_DIR, "memory.json")
             });
           }
@@ -13020,6 +13092,11 @@ ${agentPrompt}
         context: tool.schema.string().optional().describe("Optional user brief or product idea to help frame the analysis")
       },
       execute: async (args, ctx) => {
+        if (!isPathAllowed(args.imagePath)) {
+          return JSON.stringify({
+            error: `Invalid imagePath: must be an http(s) URL or an absolute/relative path inside the workspace. Paths containing ".." or absolute paths outside the workspace are not allowed.`
+          });
+        }
         const agentPath = join3(AGENT_DIR, "image_analyzer.md");
         let agentPrompt;
         try {
@@ -13169,7 +13246,12 @@ Write the markdown file with these sections:
     })
   };
   return {
-    tool: tools
+    tool: tools,
+    "command.execute.before": async (input) => {
+      if (input.command === "brandly") {
+        await ensureBaseDirs();
+      }
+    }
   };
 };
 var src_default = BrandlyPlugin;

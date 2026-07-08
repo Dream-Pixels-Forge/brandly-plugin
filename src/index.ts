@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 import { randomUUID } from "crypto";
 import { CostTracker } from "./cost-tracker";
 import { Memory } from "./memory";
+import type { ProjectState, Shot } from "./types.js";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -21,20 +22,20 @@ const PHASE_ORDER = [
   "script",
   "asset",
   "audio",
+  "re_edit",
   "validate",
   "publish",
   "done",
 ] as const;
 
-// C3/C4 fix: every phase has an agent (except done, validate uses MCP, re_edit re-runs script)
+// C3/C4 fix: every runnable phase has an agent (done is terminal, validate uses brandly_validate MCP)
 const PHASE_AGENT_MAP: Record<string, string> = {
   init: "trends_agent.md",
   trends: "concept_agent.md",
   concept: "script_agent.md",
   script: "asset_agent.md",
   asset: "audio_agent.md",
-  audio: "", // validate is handled specially (MCP call, not subagent)
-  validate: "publish_agent.md",
+  audio: "audio_agent.md",
   re_edit: "script_agent.md",
 };
 
@@ -46,10 +47,18 @@ const BrandlyPlugin: Plugin = async ({ client, project, directory, $ }) => {
   const VIDEOGEN_DIR = join(directory, "videgen");
   const AUDGEN_DIR = join(directory, "audgen");
 
-  await mkdir(PROJECTS_DIR, { recursive: true });
-  await mkdir(IMAGEN_DIR, { recursive: true });
-  await mkdir(VIDEOGEN_DIR, { recursive: true });
-  await mkdir(AUDGEN_DIR, { recursive: true });
+  // Lazy init: do NOT create folders at plugin load. They are created when
+  // (a) the user invokes the `/brandly` slash command (via command.execute.before
+  //     hook below), or (b) any tool that needs them runs (ensureBaseDirs fallback).
+  let baseDirsEnsured = false;
+  async function ensureBaseDirs(): Promise<void> {
+    if (baseDirsEnsured) return;
+    await mkdir(PROJECTS_DIR, { recursive: true });
+    await mkdir(IMAGEN_DIR, { recursive: true });
+    await mkdir(VIDEOGEN_DIR, { recursive: true });
+    await mkdir(AUDGEN_DIR, { recursive: true });
+    baseDirsEnsured = true;
+  }
 
   // C1 fix: wire CostTracker with correct base dir
   const costTracker = new CostTracker(PROJECTS_DIR);
@@ -112,6 +121,7 @@ const BrandlyPlugin: Plugin = async ({ client, project, directory, $ }) => {
   }
 
   async function createProjectStructure(id: string): Promise<void> {
+    await ensureBaseDirs();
     const dirs = [
       getProjectDir(id),
       getArtifactDir(id, "analysis"),
@@ -129,7 +139,7 @@ const BrandlyPlugin: Plugin = async ({ client, project, directory, $ }) => {
   }
 
   // H1 fix: atomic writes via temp + rename
-  async function writeProject(id: string, state: any): Promise<void> {
+  async function writeProject(id: string, state: ProjectState): Promise<void> {
     state.updatedAt = new Date().toISOString();
     const targetPath = getProjectPath(id);
     const tmpPath = targetPath + ".tmp";
@@ -138,7 +148,7 @@ const BrandlyPlugin: Plugin = async ({ client, project, directory, $ }) => {
   }
 
   // H6 fix: return null instead of throwing
-  async function readProject(id: string): Promise<any | null> {
+  async function readProject(id: string): Promise<ProjectState | null> {
     try {
       const raw = await readFile(getProjectPath(id), "utf-8");
       return JSON.parse(raw);
@@ -148,6 +158,7 @@ const BrandlyPlugin: Plugin = async ({ client, project, directory, $ }) => {
   }
 
   async function writeArtifact(id: string, category: string, filename: string, content: string): Promise<void> {
+    await ensureBaseDirs();
     const dir = getArtifactDir(id, category);
     await mkdir(dir, { recursive: true });
     const targetPath = join(dir, filename);
@@ -165,6 +176,7 @@ const BrandlyPlugin: Plugin = async ({ client, project, directory, $ }) => {
   }
 
   async function logAction(id: string, action: string, detail: string): Promise<void> {
+    await ensureBaseDirs();
     const logFile = join(getProjectDir(id), "history.log");
     const entry = `[${new Date().toISOString()}] ${action}: ${detail}\n`;
     await appendFile(logFile, entry, "utf-8");
@@ -173,6 +185,17 @@ const BrandlyPlugin: Plugin = async ({ client, project, directory, $ }) => {
   // Security: validate project ID is a UUID
   function isValidProjectId(id: string): boolean {
     return UUID_RE.test(id);
+  }
+
+  // Security: media paths must be URLs or inside the workspace
+  function isPathAllowed(inputPath: string): boolean {
+    if (!inputPath) return false;
+    if (/^https?:\/\//i.test(inputPath)) return true;
+    if (inputPath.includes("..")) return false;
+    if (/^[a-zA-Z]:\\/.test(inputPath) || inputPath.startsWith("/")) {
+      return inputPath.toLowerCase().startsWith(directory.toLowerCase());
+    }
+    return true;
   }
 
   // ── Artifact path resolver per phase (M5 fix: trends and concept save to different files) ──
@@ -191,6 +214,35 @@ const BrandlyPlugin: Plugin = async ({ client, project, directory, $ }) => {
         return { audioPlan: getAudioPlanPath(projectId) };
       default:
         return {};
+    }
+  }
+
+  // C5 fix: phase-based cost estimate for budget gate
+  function getPhaseCostEstimate(phase: string, state: ProjectState): number {
+    const styleCosts: Record<string, number> = {
+      cinematic: 35,
+      ugc: 25,
+      montage: 20,
+      multi_shot: 30,
+      continuous: 40,
+      unboxing: 25,
+      lifestyle: 30,
+    };
+    switch (phase) {
+      case "script":
+        return 0;
+      case "asset":
+        return (state.shots?.length || 5) * (styleCosts[state.style ?? "cinematic"] ?? 30);
+      case "audio":
+        return 30;
+      case "re_edit":
+        return 30;
+      case "validate":
+        return 15;
+      case "publish":
+        return 0;
+      default:
+        return 0;
     }
   }
 
@@ -216,7 +268,7 @@ const BrandlyPlugin: Plugin = async ({ client, project, directory, $ }) => {
         const id = randomUUID();
         await createProjectStructure(id);
 
-        const state = {
+        const state: ProjectState = {
           id,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -286,17 +338,19 @@ const BrandlyPlugin: Plugin = async ({ client, project, directory, $ }) => {
           return JSON.stringify({ error: "Project not found. Check the project ID." });
         }
         // L1/L2 fix: provide defaults for fields that may be undefined
+        const costSummary = await costTracker.getSummary(args.projectID);
         return JSON.stringify({
           projectName: state.productName,
           phase: state.currentPhase,
           creditsSpent: state.creditsSpent ?? 0,
           budgetCredits: state.budgetCredits ?? 0,
           budgetRemaining: (state.budgetCredits ?? 0) - (state.creditsSpent ?? 0),
-          viralityScore: state.viralityScore ?? "not yet scored",
+          viralityScore: state.viralityScore ?? null,
           shots: state.shots?.length ?? 0,
-          finalCut: state.finalCutPath ?? "not yet rendered",
+          finalCut: state.finalCutPath ?? null,
           publishPaths: state.publishPaths ?? {},
           costLog: (state.costLog ?? []).slice(-5),
+          costSummary,
         });
       },
     }),
@@ -307,7 +361,7 @@ const BrandlyPlugin: Plugin = async ({ client, project, directory, $ }) => {
       args: {
         projectID: tool.schema.string().describe("The project UUID"),
         phase: tool.schema
-          .enum(["init", "trends", "concept", "script", "asset", "audio", "validate", "publish", "done"])
+          .enum(["init", "trends", "concept", "script", "asset", "audio", "re_edit", "validate", "publish", "done"])
           .describe("The phase being approved"),
       },
       execute: async (args, ctx) => {
@@ -319,8 +373,9 @@ const BrandlyPlugin: Plugin = async ({ client, project, directory, $ }) => {
           return JSON.stringify({ error: "Project not found. Check the project ID." });
         }
 
-        const currentIdx = PHASE_ORDER.indexOf(state.currentPhase as any);
-        const approvedIdx = PHASE_ORDER.indexOf(args.phase as any);
+        const phaseLiteral = state.currentPhase as typeof PHASE_ORDER[number];
+        const currentIdx = PHASE_ORDER.indexOf(phaseLiteral);
+        const approvedIdx = PHASE_ORDER.indexOf(args.phase as typeof PHASE_ORDER[number]);
 
         if (approvedIdx === -1) {
           return JSON.stringify({ error: `Unknown phase "${args.phase}".` });
@@ -374,25 +429,28 @@ const BrandlyPlugin: Plugin = async ({ client, project, directory, $ }) => {
 
         const currentPhase = state.currentPhase;
 
-        // C5 fix: validate phase is handled specially (MCP call, not subagent)
-        if (currentPhase === "audio") {
-          // audio phase dispatches audio_agent.md, after which the validate phase
-          // is handled by brandly_validate tool (MCP call)
-        }
-
         if (currentPhase === "done") {
           return JSON.stringify({
             error: `Pipeline is complete. No more phases to run.`,
           });
         }
 
+        // C5 fix: validate phase is handled by brandly_validate, not a subagent
+        if (currentPhase === "validate") {
+          return JSON.stringify({
+            error: `Phase "validate" must be run using brandly_validate, not brandly_run_project.`,
+          });
+        }
+
         // C1 fix: budget check before expensive phases
-        const expensivePhases = ["script", "asset", "audio"];
-        if (expensivePhases.includes(currentPhase)) {
-          const budget = await costTracker.canAfford(args.projectID, 1);
+        const estimatedCost = getPhaseCostEstimate(currentPhase, state);
+        const expensivePhases = ["asset", "audio", "re_edit", "validate"];
+        if (expensivePhases.includes(currentPhase) && estimatedCost > 0) {
+          const budget = await costTracker.canAfford(args.projectID, estimatedCost);
           if (!budget.allowed) {
             return JSON.stringify({
-              error: `Budget exhausted. ${state.creditsSpent}/${state.budgetCredits} credits spent. Cannot run phase "${currentPhase}".`,
+              error: `Budget exhausted. Phase "${currentPhase}" needs ~${estimatedCost} credits, but only ${budget.remaining} remain. ${state.creditsSpent}/${state.budgetCredits} credits spent.`,
+              estimatedCost,
               budgetRemaining: budget.remaining,
             });
           }
@@ -428,7 +486,7 @@ ${state.imageAnalysis ? `## Image Analysis Available: Yes (see project state)` :
 
 ## Previous Artifacts
 ${state.viralityReport ? `- Virality report: ${state.viralityReport}` : "- No virality report yet"}
-${state.shots?.length > 0 ? `- Shots defined: ${state.shots.length}` : "- No shots yet"}
+${(state.shots?.length ?? 0) > 0 ? `- Shots defined: ${state.shots.length}` : "- No shots yet"}
 ${state.finalCutPath ? `- Final cut: ${state.finalCutPath}` : "- No final cut yet"}
 
 ## Artifact Save Paths
@@ -535,10 +593,10 @@ ${agentPrompt}
           return JSON.stringify({ error: "Project not found." });
         }
 
-        const shot = state.shots?.find((s: any) => s.id === args.shotId);
+        const shot = state.shots?.find((s: Shot) => s.id === args.shotId);
         if (!shot) {
           return JSON.stringify({
-            error: `Shot ${args.shotId} not found. Available: ${(state.shots ?? []).map((s: any) => s.id).join(", ")}`,
+            error: `Shot ${args.shotId} not found. Available: ${(state.shots ?? []).map((s: Shot) => s.id).join(", ")}`,
           });
         }
 
@@ -588,6 +646,18 @@ ${agentPrompt}
           return JSON.stringify({ error: "Project not found. Check the project ID." });
         }
 
+        if (state.currentPhase !== "validate") {
+          return JSON.stringify({
+            error: `Cannot validate: current phase is "${state.currentPhase}". Reach the validate phase first (e.g. by approving audio).`,
+          });
+        }
+
+        if (!isPathAllowed(args.videoPath)) {
+          return JSON.stringify({
+            error: `Invalid videoPath: must be an http(s) URL or an absolute/relative path inside the workspace. Paths containing ".." or absolute paths outside the workspace are not allowed.`,
+          });
+        }
+
         const platforms = state.targetPlatforms ?? ["tiktok", "instagram"];
 
         const mcpCall = {
@@ -611,13 +681,15 @@ ${agentPrompt}
           },
         };
 
+        state.currentPhase = "publish";
+        await writeProject(args.projectID, state);
         await logAction(args.projectID, "validate_started", args.videoPath);
 
         // M4 fix: return object, not JSON.stringify
         return JSON.stringify({
           instruction: "Call the Higgsfield virality predictor MCP tool with these params",
           mcpCall,
-          message: `Validate video at ${args.videoPath}. After getting the score, update the project's viralityScore field.`,
+          message: `Validate video at ${args.videoPath}. After getting the score, update the project's viralityScore field. Pipeline advanced to "publish".`,
         });
       },
     }),
@@ -630,6 +702,9 @@ ${agentPrompt}
         hook: tool.schema.string().optional().describe("Hook text to like or dislike"),
       },
       execute: async (args, ctx) => {
+        if (args.action !== "view") {
+          await ensureBaseDirs();
+        }
         switch (args.action) {
           case "view": {
             const prefs = await memory.getPreferences();
@@ -639,7 +714,7 @@ ${agentPrompt}
               likedHooks: prefs.likedHooks,
               dislikedHooks: prefs.dislikedHooks,
               projectCount: prefs.projectCount,
-              avgBudgetUsage: Math.round(prefs.avgBudgetUsage),
+              avgBudgetUsage: Math.round(prefs.avgBudgetUsage * 100) / 100,
               memoryFile: join(BRANDLY_DIR, "memory.json"),
             });
           }
@@ -674,6 +749,12 @@ ${agentPrompt}
         context: tool.schema.string().optional().describe("Optional user brief or product idea to help frame the analysis"),
       },
       execute: async (args, ctx) => {
+        if (!isPathAllowed(args.imagePath)) {
+          return JSON.stringify({
+            error: `Invalid imagePath: must be an http(s) URL or an absolute/relative path inside the workspace. Paths containing ".." or absolute paths outside the workspace are not allowed.`,
+          });
+        }
+
         const agentPath = join(AGENT_DIR, "image_analyzer.md");
         let agentPrompt: string;
         try {
@@ -853,6 +934,11 @@ Write the markdown file with these sections:
 
   return {
     tool: tools,
+    "command.execute.before": async (input) => {
+      if (input.command === "brandly") {
+        await ensureBaseDirs();
+      }
+    },
   };
 };
 

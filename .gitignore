@@ -1,3 +1,21 @@
+# Dependencies
 node_modules/
 .opencode/
+
+# Build output
+dist/
+
+# Plugin runtime state and generated assets
+.brandly/
+imagen/
+videgen/
+audgen/
+
+# Temp files
 *.tmp
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
