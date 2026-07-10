@@ -1,5 +1,5 @@
-import { readFile, writeFile, rename } from "fs/promises";
-import { join } from "path";
+import { readFile, writeFile, rename } from "node:fs/promises";
+import { join } from "node:path";
 
 interface CostEntry {
   phase: string;

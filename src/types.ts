@@ -1,146 +1,140 @@
-// --- Enums ---
-export type InputType = "idea" | "image" | "video" | "idea_with_image";
+import type { VideoStyle } from "./constants";
 
-export type VideoStyle =
-  | "cinematic"
-  | "ugc"
-  | "montage"
-  | "multi_shot"
-  | "continuous"
-  | "unboxing"
-  | "lifestyle";
-
-export type Platform = "tiktok" | "instagram" | "youtube" | "all";
-
-// --- Pipeline Phases (C4 fix: aligned with phaseOrder in index.ts) ---
-export type Phase =
-  | "init"
-  | "trends"
-  | "concept"
-  | "script"
-  | "asset"
-  | "audio"
-  | "validate"
-  | "publish"
-  | "done"
-  | "re_edit"
-  | "failed";
-
-// --- Shot ---
-export interface Shot {
-  id: number;
-  duration: number; // Seconds
-  description: string;
-  cameraMovement?: string;
-  lighting?: string;
-  style?: string;
-  subject?: string;
-  environment?: string;
-  prompt?: string; // Generated prompt for this shot
-  renderPath?: string; // Path to rendered video file
-  qualityScore?: number; // 0-10 quality score
-  model?: string; // Which model generated this
-  negativePrompt?: string;
-  estimatedCredits?: number;
+export interface BrandlyPluginConfig {
+  defaultBudget?: number;
+  maxBudget?: number;
 }
 
-// --- Project State ---
-export interface ProjectState {
+export interface AgentMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface ToolDefinition {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+  execute: (args: Record<string, unknown>) => Promise<unknown>;
+}
+
+export interface ToolContext {
+  directory: string;
+  projectsDir: string;
+  imagesDir: string;
+  artifactsDir: string;
+  agentsDir: string;
+  writeAtomic: (path: string, content: string) => Promise<void>;
+  writeProject: (id: string, data: ProjectData) => Promise<void>;
+  readProject: (id: string) => Promise<ProjectData | null>;
+  listProjects: () => Promise<string[]>;
+  isPathAllowed: (filePath: string) => boolean;
+  getArtifactPaths: (projectDir: string, phase: string) => string[];
+  getPhaseCostEstimate: (
+    style: string,
+    shotCount: number,
+    currentPhase: string,
+    targetPhase: string
+  ) => number;
+}
+
+export interface ProjectData {
   id: string;
+  name?: string;
+  description?: string;
+  status: "pending" | "running" | "completed" | "failed" | "paused" | "cancelled";
+  style: VideoStyle;
+  shotCount: number;
+  budget: number;
+  spent: number;
+  currentPhase: string;
+  phases: Record<string, PhaseResult>;
+  hooks?: string[];
+  settings?: string[];
+  targetPlatforms?: string[];
+  imageAnalysis?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
+}
 
-  // Input
-  inputType: InputType;
-  idea?: string;
-  imagePath?: string;
-  videoPath?: string;
-  imageAnalysis?: any; // Image analyzer output JSON
-  imageAnalysisPending?: boolean;
+export interface PhaseResult {
+  status: "pending" | "running" | "completed" | "failed";
+  startedAt?: string;
+  completedAt?: string;
+  output?: string;
+  error?: string;
+}
 
-  // Config
-  productName: string;
-  targetPlatforms: Platform[];
-  style?: VideoStyle;
-  budgetCredits: number;
-  creditsSpent: number;
+export interface TrendReport {
+  summary: string;
+  patterns: string[];
+  recommendations: string[];
+  timestamp: string;
+}
 
-  // Pipeline state (C4 fix: audio added, preview removed)
-  currentPhase: Phase;
-  viralityScore?: number;
+export interface ConceptData {
+  title: string;
+  description: string;
+  visualStyle: string;
+  narrative: string;
+  characters?: string[];
+  setting?: string;
+}
 
-  // Artifacts
-  viralityReport?: string; // Path to virality report
-  storyboardPath?: string;
-  shots: Shot[];
-  finalCutPath?: string;
-  publishPaths: Record<string, string>;
+export interface ScriptData {
+  scenes: ScriptScene[];
+  duration: number;
+  tone: string;
+  pacing: string;
+}
 
-  // Preview mode
-  previewMode: boolean; // Generate low-res previews first
-  previewPaths: Record<string, string>; // Preview renders per shot
-  previewApproved: boolean;
+export interface ScriptScene {
+  id: number;
+  description: string;
+  duration: number;
+  dialogue?: string;
+  visualNotes?: string;
+}
 
-  // Re-edit state
-  reEditTarget?: number; // Shot ID being re-edited
-  reEditHistory: {
-    shotId: number;
-    timestamp: string;
-    reason: string;
-    creditsSpent: number;
-  }[];
+export interface AssetPlan {
+  assets: AssetItem[];
+  style: string;
+  mood: string;
+}
 
-  // User preferences (learned across projects)
-  userPreferences: {
-    preferredStyle?: VideoStyle;
-    preferredModel?: string;
-    preferredDuration?: number;
-    likedHooks: string[];
-    dislikedHooks: string[];
-    avgBudgetUsage?: number;
-  };
+export interface AssetItem {
+  id: string;
+  type: "image" | "video" | "audio" | "3d";
+  description: string;
+  prompt: string;
+  aspectRatio?: string;
+  duration?: number;
+}
 
-  // Audio
-  audioTrack: {
-    path?: string;
-    style?: string;
-    source: "generated" | "suggested" | "none";
-  };
+export interface AudioPlan {
+  tracks: AudioTrack[];
+  style: string;
+  mood: string;
+}
 
-  // Cost log
-  costLog: {
-    phase: string;
-    action: string;
-    credits: number;
-    timestamp: string;
-  }[];
+export interface AudioTrack {
+  id: string;
+  type: "music" | "sfx" | "voiceover";
+  description: string;
+  prompt: string;
+  duration?: number;
+}
 
-  // Upfront estimate
-  costEstimate?: {
-    concept: number;
-    script: number;
-    asset: number;
-    audio: number;
-    validate: number;
-    publish: number;
-    total: number;
-  };
+export interface ValidationResult {
+  passed: boolean;
+  score: number;
+  issues: string[];
+  recommendations: string[];
+}
 
-  // Artifact paths (H7 fix: plugin writes artifacts, not subagents)
-  artifactPaths?: {
-    analysis: string;
-    trends: string;
-    concept: string;
-    script: string;
-    storyboard: string;
-    assetPlan: string;
-    audioPlan: string;
-  };
-
-  // Generated file directories (outside .brandly — for binary files)
-  genDirs?: {
-    imagen: string;
-    videgen: string;
-    audgen: string;
-  };
+export interface CostEstimate {
+  style: VideoStyle;
+  shotCount: number;
+  baseCost: number;
+  shotCost: number;
+  totalCost: number;
 }

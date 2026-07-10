@@ -77,6 +77,8 @@ audgen/{id}/                Generated audio
 - [Bun](https://bun.sh) runtime
 - Higgsfield account (for image/video generation)
 - Magnific account (for audio generation)
+- Kling
+- OpenArt
 
 ## MCP Dependencies
 

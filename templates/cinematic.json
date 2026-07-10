@@ -1,0 +1,48 @@
+{
+  "name": "cinematic",
+  "description": "High-production cinematic product showcase with dramatic lighting and smooth camera movements",
+  "style": "cinematic",
+  "duration": {
+    "min": 15,
+    "max": 30,
+    "optimal": 20
+  },
+  "hooks": [
+    "Dramatic product reveal from darkness",
+    "Slow-motion lifestyle integration",
+    "Close-up texture detail with bokeh",
+    "Environmental transformation around product"
+  ],
+  "narrative": {
+    "structure": "hook → problem → solution → lifestyle → CTA",
+    "pacing": "slow to medium, deliberate cuts",
+    "transitions": "smooth dissolves, light leaks"
+  },
+  "camera": [
+    "Slow dolly in toward product",
+    "Orbital arc around hero shot",
+    "Low angle upward reveal",
+    "Macro lens detail shots",
+    "Tracking shot following user interaction"
+  ],
+  "lighting": [
+    "Golden hour warm side light",
+    "Dramatic chiaroscuro with rim light",
+    "Soft diffused studio with colored accents",
+    "Backlit silhouette with fill"
+  ],
+  "music": {
+    "style": "ambient electronic or cinematic orchestral",
+    "tempo": "80-110 BPM",
+    "mood": "premium, aspirational"
+  },
+  "models": {
+    "image": ["soul_cinema", "gpt_image_2", "nano_banana_pro"],
+    "video": ["seedance_2_0", "kling3_0"]
+  },
+  "platforms": {
+    "tiktok": { "aspect": "9:16", "duration": "15-20s" },
+    "instagram": { "aspect": "1:1 or 9:16", "duration": "15-30s" },
+    "youtube": { "aspect": "16:9", "duration": "20-30s" }
+  }
+}

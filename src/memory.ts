@@ -1,91 +1,77 @@
-import { readFile, writeFile, mkdir } from "fs/promises";
-import { join } from "path";
+import { join } from "node:path";
+import { readFile, writeFile, rename, unlink, mkdir } from "node:fs/promises";
+import { existsSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { randomUUID } from "node:crypto";
 
 export interface UserPreferences {
   preferredStyle?: string;
-  preferredModel?: string;
-  preferredDuration?: number;
-  likedHooks: string[];
-  dislikedHooks: string[];
-  avgBudgetUsage: number;
-  projectCount: number;
-  lastUpdated: string;
+  targetPlatforms?: string[];
+  likedHooks?: string[];
+  dislikedHooks?: string[];
+  budget?: number;
+  lastUsedStyle?: string;
 }
 
-function getDefaultPrefs(): UserPreferences {
-  return {
-    likedHooks: [],
-    dislikedHooks: [],
-    avgBudgetUsage: 0,
-    projectCount: 0,
-    lastUpdated: new Date().toISOString(),
-  };
-}
-
-/**
- * Persists user preferences across projects.
- * Tracks liked/disliked hooks, preferred style/model, and budget patterns.
- * H2 fix: accepts baseDir instead of using process.cwd()
- * H3 fix: no in-memory cache (was useless since instantiated per call)
- * M6 fix: timestamp set at save time, not module load
- * M8 fix: file is memory.json not user_preferences.json
- */
 export class Memory {
-  private memoryFile: string;
-  private memoryDir: string;
+  private data: UserPreferences;
+  private memoryPath: string;
 
-  constructor(baseDir: string) {
-    this.memoryDir = baseDir;
-    this.memoryFile = join(baseDir, "memory.json");
+  constructor(workspaceDir: string) {
+    this.memoryPath = join(workspaceDir, ".brandly", "user-preferences.json");
+    this.data = this.load();
   }
 
-  async load(): Promise<UserPreferences> {
+  private load(): UserPreferences {
     try {
-      const raw = await readFile(this.memoryFile, "utf-8");
-      return JSON.parse(raw);
+      if (existsSync(this.memoryPath)) {
+        const content = readFileSync(
+          this.memoryPath,
+          "utf-8"
+        );
+        return JSON.parse(content);
+      }
     } catch {
-      return getDefaultPrefs();
+      // Return empty preferences on error
+    }
+    return {};
+  }
+
+  get(): UserPreferences {
+    return { ...this.data };
+  }
+
+  exists(): boolean {
+    return Object.keys(this.data).length > 0;
+  }
+
+  async save(): Promise<void> {
+    const dir = join(
+      this.memoryPath,
+      ".."
+    );
+    await mkdir(dir, { recursive: true });
+
+    const tempPath = join(
+      tmpdir(),
+      `brandly-memory-${randomUUID()}.json`
+    );
+
+    try {
+      await writeFile(tempPath, JSON.stringify(this.data, null, 2), "utf-8");
+      await rename(tempPath, this.memoryPath);
+    } catch (err) {
+      // Clean up temp file on error
+      try {
+        await unlink(tempPath);
+      } catch {
+        // Ignore cleanup errors
+      }
+      throw err;
     }
   }
 
-  async save(prefs: UserPreferences): Promise<void> {
-    prefs.lastUpdated = new Date().toISOString();
-    await mkdir(this.memoryDir, { recursive: true });
-    await writeFile(this.memoryFile, JSON.stringify(prefs, null, 2));
-  }
-
-  async recordProjectCompletion(projectId: string, creditsUsed: number, style: string, model?: string): Promise<void> {
-    const prefs = await this.load();
-    prefs.projectCount += 1;
-    prefs.avgBudgetUsage = (prefs.avgBudgetUsage * (prefs.projectCount - 1) + creditsUsed) / prefs.projectCount;
-    prefs.preferredStyle = style;
-    if (model) prefs.preferredModel = model;
-    await this.save(prefs);
-  }
-
-  async likeHook(hook: string): Promise<void> {
-    const prefs = await this.load();
-    if (!prefs.likedHooks.includes(hook)) {
-      prefs.likedHooks.push(hook);
-    }
-    prefs.dislikedHooks = prefs.dislikedHooks.filter(h => h !== hook);
-    await this.save(prefs);
-  }
-
-  async dislikeHook(hook: string): Promise<void> {
-    const prefs = await this.load();
-    if (!prefs.dislikedHooks.includes(hook)) {
-      prefs.dislikedHooks.push(hook);
-    }
-    prefs.likedHooks = prefs.likedHooks.filter(h => h !== hook);
-    await this.save(prefs);
-  }
-
-  async getPreferences(): Promise<UserPreferences> {
-    return this.load();
-  }
-
-  async reset(): Promise<void> {
-    await this.save(getDefaultPrefs());
+  update(prefs: Partial<UserPreferences>): void {
+    this.data = { ...this.data, ...prefs };
   }
 }

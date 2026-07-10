@@ -1,0 +1,47 @@
+{
+  "name": "montage",
+  "description": "Fast-paced montage with quick cuts synced to music beats, ideal for product features",
+  "style": "montage",
+  "duration": {
+    "min": 8,
+    "max": 15,
+    "optimal": 12
+  },
+  "hooks": [
+    "Rapid feature showcase synced to beats",
+    "Color-coded product variants montage",
+    "Lifestyle moments compilation",
+    "Stop-motion product assembly"
+  ],
+  "narrative": {
+    "structure": "hook → feature1 → feature2 → feature3 → CTA (all beat-synced)",
+    "pacing": "very fast, 0.5-1s per cut",
+    "transitions": "hard cuts on beat, occasional whip pans"
+  },
+  "camera": [
+    "Static product center-frame",
+    "Quick zoom in/out on beats",
+    "Slide left-right product parade",
+    "Top-down flat lay rotations",
+    "360-degree product spin"
+  ],
+  "lighting": [
+    "High-key studio even lighting",
+    "Colored gel accents",
+    "Gradient background shifts",
+    "Neon glow highlights"
+  ],
+  "music": {
+    "style": "high-energy electronic or bass-heavy",
+    "tempo": "120-140 BPM",
+    "mood": "energetic, dynamic, attention-grabbing"
+  },
+  "models": {
+    "image": ["nano_banana_2", "flux_2"],
+    "video": ["kling3_0_turbo", "hailuo"]
+  },
+  "platforms": {
+    "tiktok": { "aspect": "9:16", "duration": "8-12s" },
+    "instagram": { "aspect": "1:1", "duration": "10-15s" }
+  }
+}

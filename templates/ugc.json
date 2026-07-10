@@ -1,0 +1,47 @@
+{
+  "name": "ugc",
+  "description": "Authentic user-generated content style with handheld camera and casual energy",
+  "style": "ugc",
+  "duration": {
+    "min": 10,
+    "max": 20,
+    "optimal": 15
+  },
+  "hooks": [
+    "Unboxing first impressions",
+    "Before/after transformation",
+    "POV of using the product",
+    "Reaction-style reveal"
+  ],
+  "narrative": {
+    "structure": "hook → unbox → try → reaction → CTA",
+    "pacing": "fast, energetic cuts",
+    "transitions": "jump cuts, snap zooms"
+  },
+  "camera": [
+    "Handheld selfie perspective",
+    "POV holding product",
+    "Quick pan from face to product",
+    "Over-shoulder using product",
+    "Mirror reflection shot"
+  ],
+  "lighting": [
+    "Natural window light",
+    "Ring light face illumination",
+    "Mixed ambient indoor",
+    "Bright outdoor daylight"
+  ],
+  "music": {
+    "style": "trending TikTok sounds or upbeat pop",
+    "tempo": "100-130 BPM",
+    "mood": "fun, authentic, relatable"
+  },
+  "models": {
+    "image": ["soul_2", "nano_banana_2"],
+    "video": ["kling3_0", "kling3_0_turbo"]
+  },
+  "platforms": {
+    "tiktok": { "aspect": "9:16", "duration": "10-15s" },
+    "instagram": { "aspect": "9:16", "duration": "15s" }
+  }
+}
