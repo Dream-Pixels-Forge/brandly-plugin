@@ -13,11 +13,11 @@ Trigger on: "make a product video", "create a marketing video for [product]", "g
 
 ## The Director's Vision (STAMP, Three-Act, 8-Layer)
 Read the full creative frameworks before writing prompts:
-→ `skill/references/directors-vision.md`
+→ `references/directors-vision.md`
 
 ## Pipeline (provider → analyze → start → run → approve → validate → publish)
 Step-by-step commands, dispatch flow, and the 8 pipeline phases:
-→ `skill/references/pipeline.md`
+→ `references/pipeline.md`
 
 ## Cost Control
 - Every project has a credit budget (default 500)
@@ -25,40 +25,44 @@ Step-by-step commands, dispatch flow, and the 8 pipeline phases:
 - If budget runs out, the pipeline pauses and reports what's been spent
 - Check with `brandly_status` to see remaining budget
 - Model credit costs, free-tier limits, and budget-selection logic:
-  → `skill/references/model-costs.md`
+  → `references/model-costs.md`
 
 ## Image & Prompt Quality
 - Prompt realism formula, keyword references, and length targets:
-  → `skill/references/prompt-optimization.md`
+  → `references/prompt-optimization.md`
 - Higgsfield model list and prompt templates:
-  → `skill/references/higgsfield-models.md`
+  → `references/higgsfield-models.md`
 
 ## Virality Scoring
 Score finished videos with the Higgsfield Virality Predictor (thresholds, platform requirements, command):
-→ `skill/references/virality-predictor.md`
+→ `references/virality-predictor.md`
 
 ## Project Artifacts & Folder Structure
 Where each phase writes its markdown/JSON and where media lands:
-→ `skill/references/project-structure.md`
+→ `references/project-structure.md`
 
 ## Download, Export & Re-Editing
 - Save generated media locally; package a full project export:
-  → `skill/references/download-export.md`
+  → `references/download-export.md`
 - Re-edit a low-scoring shot: `brandly_re_edit(projectID, shotId, newPrompt)` then re-run the asset phase
 - Estimate costs first: `brandly_estimate(idea, productName, style, shotCount)`
 - View/update preferences: `brandly_memory(action="view" | "like_hook" | "dislike_hook")`
 
 ## Video Editing with Remotion
 Trim, concat, overlay, transitions, text/audio/effects, resize, crop, and render:
-→ `skill/references/video-editing.md`
+→ `references/video-editing.md`
 
 ## Motion Graphics (Remotion animations)
 Presets, animation types, easing modes, element types, and the `brandly_motion_graphics` parameters:
-→ `skill/references/motion-graphics.md`
+→ `references/motion-graphics.md`
+
+## Remotion Animation Reference
+Deep reference for `interpolate()`, `Easing`, `spring()`, `Sequence`, timing best practices, and common pitfalls:
+→ `references/remotion-animation.md`
 
 ## Abstract Backgrounds (style library)
 Premium text-free abstract background prompts for image gen / scene backings, with 10+ remixable variations:
-→ `skill/references/abstract-backgrounds.md`
+→ `references/abstract-backgrounds.md`
 
 ## Tips
 - **Run image analysis first** — even before starting a project. The analysis gives you a creative brief you can refine before committing credits.
