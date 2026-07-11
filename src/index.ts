@@ -16,6 +16,11 @@ import { createTemplatesTool } from "./tools/templates";
 import { createCancelTool } from "./tools/cancel";
 import { createProgressTool } from "./tools/progress";
 import { createExportTool } from "./tools/export";
+import { createDownloadTool } from "./tools/download";
+import { createProviderTool } from "./tools/provider";
+import { createVideoEditTool } from "./tools/video-edit";
+import { createVideoRenderTool } from "./tools/video-render";
+import { createAssemblyTool } from "./tools/assembly";
 
 export default function brandlyPlugin({
   directory,
@@ -40,6 +45,11 @@ export default function brandlyPlugin({
     createCancelTool(ctx),
     createProgressTool(ctx),
     createExportTool(ctx),
+    createDownloadTool(ctx),
+    createProviderTool(ctx),
+    createVideoEditTool(ctx),
+    createVideoRenderTool(ctx),
+    createAssemblyTool(ctx),
   ];
 
   return {
