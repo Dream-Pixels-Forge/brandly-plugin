@@ -1823,31 +1823,31 @@ function createVideoEditTool(ctx) {
 function generateRemotionComposition(operation, inputFiles, params, outputFormat) {
   const width = params.width || 1920;
   const height = params.height || 1080;
-  const fps = params.fps || 30;
+  const fps2 = params.fps || 30;
   switch (operation) {
     case "trim":
-      return generateTrimComposition(inputFiles[0], params, width, height, fps);
+      return generateTrimComposition(inputFiles[0], params, width, height, fps2);
     case "concat":
-      return generateConcatComposition(inputFiles, params, width, height, fps);
+      return generateConcatComposition(inputFiles, params, width, height, fps2);
     case "overlay":
-      return generateOverlayComposition(inputFiles, params, width, height, fps);
+      return generateOverlayComposition(inputFiles, params, width, height, fps2);
     case "transition":
-      return generateTransitionComposition(inputFiles, params, width, height, fps);
+      return generateTransitionComposition(inputFiles, params, width, height, fps2);
     case "add-text":
-      return generateTextComposition(inputFiles[0], params, width, height, fps);
+      return generateTextComposition(inputFiles[0], params, width, height, fps2);
     case "add-audio":
-      return generateAudioComposition(inputFiles[0], params, width, height, fps);
+      return generateAudioComposition(inputFiles[0], params, width, height, fps2);
     case "add-effect":
-      return generateEffectComposition(inputFiles[0], params, width, height, fps);
+      return generateEffectComposition(inputFiles[0], params, width, height, fps2);
     case "resize":
-      return generateResizeComposition(inputFiles[0], params, width, height, fps);
+      return generateResizeComposition(inputFiles[0], params, width, height, fps2);
     case "crop":
-      return generateCropComposition(inputFiles[0], params, width, height, fps);
+      return generateCropComposition(inputFiles[0], params, width, height, fps2);
     default:
-      return generateDefaultComposition(inputFiles, width, height, fps);
+      return generateDefaultComposition(inputFiles, width, height, fps2);
   }
 }
-function generateTrimComposition(input, params, width, height, fps) {
+function generateTrimComposition(input, params, width, height, fps2) {
   const startTime = params.startTime || 0;
   const duration = params.duration || 5;
   return `import { Composition, Video, staticFile } from 'remotion';
@@ -1856,8 +1856,8 @@ const TrimmedVideo = () => {
   return (
     <Video
       src={staticFile('${input}')}
-      startFrom={${startTime * fps}}
-      endAt={${(startTime + duration) * fps}}
+      startFrom={${startTime * fps2}}
+      endAt={${(startTime + duration) * fps2}}
       style={{ width: '100%', height: '100%' }}
     />
   );
@@ -1868,8 +1868,8 @@ export const RemotionComposition = () => {
     <Composition
       id="TrimmedVideo"
       component={TrimmedVideo}
-      durationInFrames={${duration * fps}}
-      fps={${fps}}
+      durationInFrames={${duration * fps2}}
+      fps={${fps2}}
       width={${width}}
       height={${height}}
     />
@@ -1877,7 +1877,7 @@ export const RemotionComposition = () => {
 };
 `;
 }
-function generateConcatComposition(inputs, params, width, height, fps) {
+function generateConcatComposition(inputs, params, width, height, fps2) {
   const transitionDuration = params.transitionDuration || 1;
   const totalDuration = inputs.length * 3;
   return `import { Composition, Sequence, Video, staticFile } from 'remotion';
@@ -1893,8 +1893,8 @@ const ConcatenatedVideo = () => {
       {clips.map((clip, index) => (
         <Sequence
           key={index}
-          from={index * ${3 * fps}}
-          durationInFrames={${3 * fps}}
+          from={index * ${3 * fps2}}
+          durationInFrames={${3 * fps2}}
         >
           <Video
             src={staticFile(clip)}
@@ -1911,8 +1911,8 @@ export const RemotionComposition = () => {
     <Composition
       id="ConcatenatedVideo"
       component={ConcatenatedVideo}
-      durationInFrames={${totalDuration * fps}}
-      fps={${fps}}
+      durationInFrames={${totalDuration * fps2}}
+      fps={${fps2}}
       width={${width}}
       height={${height}}
     />
@@ -1920,7 +1920,7 @@ export const RemotionComposition = () => {
 };
 `;
 }
-function generateOverlayComposition(inputs, params, width, height, fps) {
+function generateOverlayComposition(inputs, params, width, height, fps2) {
   const overlayPosition = params.position || "top-right";
   const overlayScale = params.scale || 0.3;
   return `import { Composition, Video, Img, staticFile } from 'remotion';
@@ -1952,8 +1952,8 @@ export const RemotionComposition = () => {
     <Composition
       id="OverlayVideo"
       component={OverlayVideo}
-      durationInFrames={${10 * fps}}
-      fps={${fps}}
+      durationInFrames={${10 * fps2}}
+      fps={${fps2}}
       width={${width}}
       height={${height}}
     />
@@ -1961,20 +1961,20 @@ export const RemotionComposition = () => {
 };
 `;
 }
-function generateTransitionComposition(inputs, params, width, height, fps) {
+function generateTransitionComposition(inputs, params, width, height, fps2) {
   const transitionType = params.transitionType || "fade";
   const transitionDuration = params.transitionDuration || 1;
   return `import { Composition, Sequence, Video, staticFile, interpolate, useCurrentFrame } from 'remotion';
 
 const TransitionVideo = () => {
   const frame = useCurrentFrame();
-  const clipDuration = ${3 * fps};
-  const transitionFrames = ${transitionDuration * fps};
+  const clipDuration = ${3 * fps2};
+  const transitionFrames = ${transitionDuration * fps2};
 
   return (
     <>
       ${inputs.map((input, i) => `
-      <Sequence from={${i * (3 - transitionDuration) * fps}} durationInFrames={clipDuration}>
+      <Sequence from={${i * (3 - transitionDuration) * fps2}} durationInFrames={clipDuration}>
         <Video
           src={staticFile('${input}')}
           style={{
@@ -1999,8 +1999,8 @@ export const RemotionComposition = () => {
     <Composition
       id="TransitionVideo"
       component={TransitionVideo}
-      durationInFrames={${inputs.length * 3 * fps}}
-      fps={${fps}}
+      durationInFrames={${inputs.length * 3 * fps2}}
+      fps={${fps2}}
       width={${width}}
       height={${height}}
     />
@@ -2008,7 +2008,7 @@ export const RemotionComposition = () => {
 };
 `;
 }
-function generateTextComposition(input, params, width, height, fps) {
+function generateTextComposition(input, params, width, height, fps2) {
   const text = params.text || "Your Text Here";
   const fontSize = params.fontSize || 72;
   const color = params.color || "#ffffff";
@@ -2045,8 +2045,8 @@ export const RemotionComposition = () => {
     <Composition
       id="TextOverlayVideo"
       component={TextOverlayVideo}
-      durationInFrames={${10 * fps}}
-      fps={${fps}}
+      durationInFrames={${10 * fps2}}
+      fps={${fps2}}
       width={${width}}
       height={${height}}
     />
@@ -2054,7 +2054,7 @@ export const RemotionComposition = () => {
 };
 `;
 }
-function generateAudioComposition(input, params, width, height, fps) {
+function generateAudioComposition(input, params, width, height, fps2) {
   const audioFile = params.audioFile || "audio.mp3";
   const volume = params.volume || 0.8;
   return `import { Composition, Video, Audio, staticFile } from 'remotion';
@@ -2079,8 +2079,8 @@ export const RemotionComposition = () => {
     <Composition
       id="AudioVideo"
       component={AudioVideo}
-      durationInFrames={${10 * fps}}
-      fps={${fps}}
+      durationInFrames={${10 * fps2}}
+      fps={${fps2}}
       width={${width}}
       height={${height}}
     />
@@ -2088,7 +2088,7 @@ export const RemotionComposition = () => {
 };
 `;
 }
-function generateEffectComposition(input, params, width, height, fps) {
+function generateEffectComposition(input, params, width, height, fps2) {
   const effectType = params.effectType || "blur";
   const intensity = params.intensity || 5;
   return `import { Composition, Video, staticFile, interpolate, useCurrentFrame } from 'remotion';
@@ -2113,8 +2113,8 @@ export const RemotionComposition = () => {
     <Composition
       id="EffectVideo"
       component={EffectVideo}
-      durationInFrames={${10 * fps}}
-      fps={${fps}}
+      durationInFrames={${10 * fps2}}
+      fps={${fps2}}
       width={${width}}
       height={${height}}
     />
@@ -2122,7 +2122,7 @@ export const RemotionComposition = () => {
 };
 `;
 }
-function generateResizeComposition(input, params, width, height, fps) {
+function generateResizeComposition(input, params, width, height, fps2) {
   const newWidth = params.newWidth || 1280;
   const newHeight = params.newHeight || 720;
   return `import { Composition, Video, staticFile } from 'remotion';
@@ -2141,8 +2141,8 @@ export const RemotionComposition = () => {
     <Composition
       id="ResizedVideo"
       component={ResizedVideo}
-      durationInFrames={${10 * fps}}
-      fps={${fps}}
+      durationInFrames={${10 * fps2}}
+      fps={${fps2}}
       width={${newWidth}}
       height={${newHeight}}
     />
@@ -2150,7 +2150,7 @@ export const RemotionComposition = () => {
 };
 `;
 }
-function generateCropComposition(input, params, width, height, fps) {
+function generateCropComposition(input, params, width, height, fps2) {
   const cropX = params.x || 0;
   const cropY = params.y || 0;
   const cropWidth = params.width || width;
@@ -2178,8 +2178,8 @@ export const RemotionComposition = () => {
     <Composition
       id="CroppedVideo"
       component={CroppedVideo}
-      durationInFrames={${10 * fps}}
-      fps={${fps}}
+      durationInFrames={${10 * fps2}}
+      fps={${fps2}}
       width={${cropWidth}}
       height={${cropHeight}}
     />
@@ -2187,7 +2187,7 @@ export const RemotionComposition = () => {
 };
 `;
 }
-function generateDefaultComposition(inputs, width, height, fps) {
+function generateDefaultComposition(inputs, width, height, fps2) {
   return `import { Composition, Video, staticFile } from 'remotion';
 
 const DefaultVideo = () => {
@@ -2204,8 +2204,8 @@ export const RemotionComposition = () => {
     <Composition
       id="DefaultVideo"
       component={DefaultVideo}
-      durationInFrames={${10 * fps}}
-      fps={${fps}}
+      durationInFrames={${10 * fps2}}
+      fps={${fps2}}
       width={${width}}
       height={${height}}
     />
@@ -2396,11 +2396,11 @@ async function discoverMedia(dir) {
   }
   return clips;
 }
-function inferDurationForImage(fps) {
+function inferDurationForImage(fps2) {
   return 3;
 }
 function generateAssemblyPlan(assets, params, style) {
-  const fps = params.fps || 30;
+  const fps2 = params.fps || 30;
   const width = params.width || 1920;
   const height = params.height || 1080;
   const clipDuration = params.clipDuration || 3;
@@ -2413,7 +2413,7 @@ function generateAssemblyPlan(assets, params, style) {
   const orderedClips = [...videos, ...images];
   const segments = [];
   for (const clip of orderedClips) {
-    const duration = clip.type === "image" ? inferDurationForImage(fps) : clipDuration;
+    const duration = clip.type === "image" ? inferDurationForImage(fps2) : clipDuration;
     segments.push({
       clip,
       duration,
@@ -2425,7 +2425,7 @@ function generateAssemblyPlan(assets, params, style) {
   return {
     segments,
     totalDuration,
-    fps,
+    fps: fps2,
     width,
     height,
     backgroundMusic,
@@ -2433,7 +2433,7 @@ function generateAssemblyPlan(assets, params, style) {
   };
 }
 function generateRemotionProject(plan, projectName) {
-  const { segments, fps, width, height, backgroundMusic } = plan;
+  const { segments, fps: fps2, width, height, backgroundMusic } = plan;
   const clipImports = segments.map((seg, i) => {
     const ext = seg.clip.name.split(".").pop();
     const isVideo = ["mp4", "webm", "mov"].includes(ext || "");
@@ -2449,8 +2449,8 @@ function generateRemotionProject(plan, projectName) {
   }).join(`
 `);
   const sequenceBlocks = segments.map((seg, i) => {
-    const frameStart = segments.slice(0, i).reduce((sum, s) => sum + s.duration * fps, 0);
-    const durationFrames = Math.round(seg.duration * fps);
+    const frameStart = segments.slice(0, i).reduce((sum, s) => sum + s.duration * fps2, 0);
+    const durationFrames = Math.round(seg.duration * fps2);
     const ext = seg.clip.name.split(".").pop();
     const isVideo = ["mp4", "webm", "mov"].includes(ext || "");
     return `      <Sequence from={${frameStart}} durationInFrames={${durationFrames}}>
@@ -2463,7 +2463,7 @@ function generateRemotionProject(plan, projectName) {
       </Sequence>`;
   }).join(`
 `);
-  const totalFrames = Math.round(plan.totalDuration * fps);
+  const totalFrames = Math.round(plan.totalDuration * fps2);
   return `import { Composition, Sequence, Audio, staticFile } from 'remotion';
 ${clipImports}
 ${audioImport}
@@ -2513,7 +2513,7 @@ export const RemotionComposition = () => {
       id="${projectName}"
       component={MontageComposition}
       durationInFrames={${totalFrames}}
-      fps={${fps}}
+      fps={${fps2}}
       width={${width}}
       height={${height}}
     />
@@ -2652,7 +2652,7 @@ function createAssemblyTool(ctx) {
         clipDuration,
         transitionType,
         transitionDuration,
-        fps,
+        fps: fps2,
         width,
         height,
         outputPath,
@@ -2691,7 +2691,7 @@ function createAssemblyTool(ctx) {
         });
       }
       const plan = generateAssemblyPlan(orderedAssets, {
-        fps,
+        fps: fps2,
         width,
         height,
         clipDuration,
@@ -3897,6 +3897,1294 @@ function createSceneConsistencyTool(ctx) {
   };
 }
 
+// src/tools/motion-graphics.ts
+import { join as join16 } from "path";
+import { mkdir as mkdir10, writeFile as writeFile8 } from "fs/promises";
+function easingToRemotion(easing) {
+  switch (easing) {
+    case "easeIn":
+      return "[0.4, 0, 1, 1]";
+    case "easeOut":
+      return "[0, 0, 0.2, 1]";
+    case "easeInOut":
+      return "[0.4, 0, 0.2, 1]";
+    case "spring":
+      return "spring({ config: { damping: 10, stiffness: 100 } })";
+    case "linear":
+    default:
+      return "[0, 0, 1, 1]";
+  }
+}
+function generateElementAnimation(el, elementVar) {
+  const anim = el.animation;
+  if (!anim)
+    return "";
+  const dur = anim.duration ?? 0.5;
+  const delay = anim.delay ?? 0;
+  const easing = easingToRemotion(anim.easing);
+  const isSpring = anim.easing === "spring";
+  const startFrame = `(${delay} * fps)`;
+  const endFrame = `(${delay} + ${dur}) * fps`;
+  switch (anim.type) {
+    case "fadeIn":
+      return `
+    // fadeIn ${elementVar}
+    const ${elementVar}_opacity = interpolate(
+      frame, ${startFrame}, ${endFrame}, [0, ${el.opacity ?? 1}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+    );`;
+    case "fadeOut":
+      return `
+    // fadeOut ${elementVar}
+    const ${elementVar}_opacity = interpolate(
+      frame, ${startFrame}, ${endFrame}, [${el.opacity ?? 1}, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+    );`;
+    case "slideInLeft":
+      return `
+    // slideInLeft ${elementVar}
+    const ${elementVar}_x = interpolate(
+      frame, ${startFrame}, ${endFrame}, [-100, ${el.x}], ${isSpring ? `{ ...${easing}, extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }` : `{ extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }`}
+    );
+    const ${elementVar}_opacity = interpolate(
+      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+    );`;
+    case "slideInRight":
+      return `
+    // slideInRight ${elementVar}
+    const ${elementVar}_x = interpolate(
+      frame, ${startFrame}, ${endFrame}, [110, ${el.x}], ${isSpring ? `{ ...${easing}, extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }` : `{ extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }`}
+    );
+    const ${elementVar}_opacity = interpolate(
+      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+    );`;
+    case "slideInTop":
+      return `
+    // slideInTop ${elementVar}
+    const ${elementVar}_y = interpolate(
+      frame, ${startFrame}, ${endFrame}, [-100, ${el.y}], ${isSpring ? `{ ...${easing}, extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }` : `{ extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }`}
+    );
+    const ${elementVar}_opacity = interpolate(
+      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+    );`;
+    case "slideInBottom":
+      return `
+    // slideInBottom ${elementVar}
+    const ${elementVar}_y = interpolate(
+      frame, ${startFrame}, ${endFrame}, [110, ${el.y}], ${isSpring ? `{ ...${easing}, extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }` : `{ extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }`}
+    );
+    const ${elementVar}_opacity = interpolate(
+      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+    );`;
+    case "scaleIn":
+      return `
+    // scaleIn ${elementVar}
+    const ${elementVar}_scale = interpolate(
+      frame, ${startFrame}, ${endFrame}, [0, 1], ${isSpring ? `{ ...${easing}, extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }` : `{ extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }`}
+    );
+    const ${elementVar}_opacity = interpolate(
+      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+    );`;
+    case "scaleOut":
+      return `
+    // scaleOut ${elementVar}
+    const ${elementVar}_scale = interpolate(
+      frame, ${startFrame}, ${endFrame}, [1, 0], ${isSpring ? `{ ...${easing}, extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }` : `{ extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }`}
+    );
+    const ${elementVar}_opacity = interpolate(
+      frame, ${startFrame}, ${endFrame}, [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+    );`;
+    case "rotateIn":
+      return `
+    // rotateIn ${elementVar}
+    const ${elementVar}_rotation = interpolate(
+      frame, ${startFrame}, ${endFrame}, [-180, ${el.rotation ?? 0}], ${isSpring ? `{ ...${easing}, extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }` : `{ extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }`}
+    );
+    const ${elementVar}_opacity = interpolate(
+      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+    );`;
+    case "typewriter":
+      return `
+    // typewriter ${elementVar}
+    const ${elementVar}_charCount = Math.floor(
+      interpolate(frame, ${startFrame}, ${endFrame}, [0, ${(el.text || "").length}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+    );`;
+    case "bounce":
+      return `
+    // bounce ${elementVar}
+    const ${elementVar}_bounce = interpolate(
+      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+    );
+    const ${elementVar}_scale = 1 + Math.sin(${elementVar}_bounce * Math.PI * 3) * 0.1 * (1 - ${elementVar}_bounce);
+    const ${elementVar}_opacity = interpolate(
+      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+    );`;
+    case "pulse":
+      return `
+    // pulse ${elementVar}
+    const ${elementVar}_pulse = Math.sin((frame - ${startFrame}) / ${dur * fps} * Math.PI * 2) * 0.5 + 0.5;
+    const ${elementVar}_scale = 1 + ${elementVar}_pulse * 0.05;
+    const ${elementVar}_opacity = interpolate(
+      frame, ${startFrame}, ${endFrame}, [0, ${el.opacity ?? 1}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+    );`;
+    case "blurIn":
+      return `
+    // blurIn ${elementVar}
+    const ${elementVar}_blur = interpolate(
+      frame, ${startFrame}, ${endFrame}, [20, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+    );
+    const ${elementVar}_opacity = interpolate(
+      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+    );`;
+    case "countUp":
+      return `
+    // countUp ${elementVar}
+    const ${elementVar}_count = Math.floor(
+      interpolate(frame, ${startFrame}, ${endFrame}, [0, ${parseInt(el.text || "100", 10) || 100}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+    );`;
+    case "drawLine":
+      return `
+    // drawLine ${elementVar}
+    const ${elementVar}_progress = interpolate(
+      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+    );`;
+    default:
+      return "";
+  }
+}
+function generateElementStyle(el, elementVar) {
+  const anim = el.animation?.type;
+  const parts = [];
+  parts.push(`position: 'absolute'`);
+  parts.push(`left: '${el.x}%'`);
+  parts.push(`top: '${el.y}%'`);
+  if (el.width)
+    parts.push(`width: '${el.width}%'`);
+  if (el.height)
+    parts.push(`height: '${el.height}%'`);
+  if (el.color && el.type !== "line")
+    parts.push(`color: '${el.color}'`);
+  if (el.fontSize)
+    parts.push(`fontSize: ${el.fontSize}`);
+  if (el.fontWeight)
+    parts.push(`fontWeight: '${el.fontWeight}'`);
+  if (el.fontFamily)
+    parts.push(`fontFamily: '${el.fontFamily}'`);
+  if (el.borderRadius)
+    parts.push(`borderRadius: ${el.borderRadius}`);
+  if (el.strokeWidth)
+    parts.push(`strokeWidth: ${el.strokeWidth}`);
+  if (anim === "fadeIn" || anim === "fadeOut") {
+    parts.push(`opacity: ${elementVar}_opacity`);
+  }
+  if (anim === "slideInLeft" || anim === "slideInRight") {
+    parts.push(`left: ${elementVar}_x + '%'`);
+    parts.push(`opacity: ${elementVar}_opacity`);
+  }
+  if (anim === "slideInTop" || anim === "slideInBottom") {
+    parts.push(`top: ${elementVar}_y + '%'`);
+    parts.push(`opacity: ${elementVar}_opacity`);
+  }
+  if (anim === "scaleIn" || anim === "scaleOut") {
+    parts.push(`transform: 'scale(' + ${elementVar}_scale + ')'`);
+    parts.push(`opacity: ${elementVar}_opacity`);
+  }
+  if (anim === "rotateIn") {
+    parts.push(`transform: 'rotate(' + ${elementVar}_rotation + 'deg)'`);
+    parts.push(`opacity: ${elementVar}_opacity`);
+  }
+  if (anim === "bounce") {
+    parts.push(`transform: 'scale(' + ${elementVar}_scale + ')'`);
+    parts.push(`opacity: ${elementVar}_opacity`);
+  }
+  if (anim === "pulse") {
+    parts.push(`transform: 'scale(' + ${elementVar}_scale + ')'`);
+    parts.push(`opacity: ${elementVar}_opacity`);
+  }
+  if (anim === "blurIn") {
+    parts.push(`filter: 'blur(' + ${elementVar}_blur + 'px)'`);
+    parts.push(`opacity: ${elementVar}_opacity`);
+  }
+  if (!anim && el.opacity !== undefined) {
+    parts.push(`opacity: ${el.opacity}`);
+  }
+  if (el.rotation && anim !== "rotateIn") {
+    parts.push(`transform: 'rotate(${el.rotation}deg)'`);
+  }
+  return `{
+          ${parts.join(`,
+          `)}
+        }`;
+}
+function generateElementJSX(el, index, sceneIndex) {
+  const varName = `el${sceneIndex}_${index}`;
+  const animCode = generateElementAnimation(el, varName);
+  const style = generateElementStyle(el, varName);
+  const tag = `el${sceneIndex}_${index}`;
+  let innerJSX = "";
+  switch (el.type) {
+    case "text": {
+      const textContent = el.text || "Text";
+      if (el.animation?.type === "typewriter") {
+        innerJSX = `<span>{${tag}_text.slice(0, ${tag}_charCount)}</span>`;
+      } else if (el.animation?.type === "countUp") {
+        innerJSX = `<span>{${tag}_count}</span>`;
+      } else {
+        innerJSX = `<span>${textContent}</span>`;
+      }
+      break;
+    }
+    case "rect":
+      innerJSX = "";
+      break;
+    case "circle":
+      innerJSX = "";
+      break;
+    case "line": {
+      const lineColor = el.color || "#ffffff";
+      const sw = el.strokeWidth || 2;
+      if (el.animation?.type === "drawLine") {
+        innerJSX = `<div style={{ position: 'absolute', left: '${el.x}%', top: '${el.y}%', width: '${el.width || 50}%', height: ${sw}px, background: ${lineColor}, transformOrigin: 'left', transform: 'scaleX(' + ${tag}_progress + ')' }} />`;
+        return animCode + `
+      ` + innerJSX;
+      }
+      innerJSX = `<div style={{ ...${style}, height: ${sw}px, background: '${lineColor}' }} />`;
+      return animCode + `
+      ` + innerJSX;
+    }
+    case "image":
+      if (!el.src)
+        return "";
+      innerJSX = `<img src="${el.src}" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />`;
+      break;
+  }
+  if (el.type === "rect" || el.type === "circle") {
+    const bg = el.color || "#ffffff";
+    const br = el.type === "circle" ? "borderRadius: '50%'" : el.borderRadius ? `borderRadius: ${el.borderRadius}` : "";
+    const rectStyle = style.replace(/^\{/, `{ ${br ? br + ", " : ""}background: '${bg}',`);
+    return animCode + `
+      <div style={${rectStyle}} />`;
+  }
+  return animCode + `
+      <div style={${style}}>
+        ${innerJSX}
+      </div>`;
+}
+function generateSceneComponent(scene, sceneIndex, fps2) {
+  const compName = `Scene_${sceneIndex}`;
+  const bg = scene.background || "#000000";
+  const durationFrames = scene.duration * fps2;
+  const elementBlocks = scene.elements.map((el, i) => generateElementJSX(el, i, sceneIndex)).join(`
+
+    `);
+  const animatedVars = scene.elements.map((el, i) => {
+    if (!el.animation)
+      return "";
+    const varName = `el${sceneIndex}_${i}`;
+    return generateElementAnimation(el, varName);
+  }).filter(Boolean).join(`
+`);
+  return `
+  // \u2500\u2500 ${compName} (${scene.duration}s) \u2500\u2500
+  const ${compName} = () => {
+    const frame = useCurrentFrame();
+    const { fps } = useVideoConfig();
+${animatedVars}
+
+    return (
+      <AbsoluteFill style={{ background: '${bg}'${scene.backgroundImage ? `, backgroundImage: 'url(${scene.backgroundImage})', backgroundSize: 'cover'` : ""} }}>
+    ${elementBlocks}
+      </AbsoluteFill>
+    );
+  };`;
+}
+function generateFullComposition(project) {
+  const { fps: fps2, width, height, scenes } = project;
+  let accumulatedFrames = 0;
+  const sceneRanges = [];
+  for (const scene of scenes) {
+    const dur = scene.duration * fps2;
+    sceneRanges.push({ from: accumulatedFrames, duration: dur });
+    accumulatedFrames += dur;
+  }
+  const totalFrames = accumulatedFrames;
+  const sceneComponents = scenes.map((s, i) => generateSceneComponent(s, i, fps2)).join(`
+`);
+  const sequenceBlocks = scenes.map((s, i) => {
+    const range = sceneRanges[i];
+    return `      <Sequence from={${range.from}} durationInFrames={${range.duration}}>
+        <Scene_${i} />
+      </Sequence>`;
+  }).join(`
+`);
+  return `import { Composition, AbsoluteFill, Sequence, useCurrentFrame, useVideoConfig, interpolate, spring } from 'remotion';
+
+${sceneComponents}
+
+  // \u2500\u2500 Main Composition \u2500\u2500
+  const MotionGraphic = () => {
+    return (
+      <AbsoluteFill style={{ background: '#000' }}>
+${sequenceBlocks}
+      </AbsoluteFill>
+    );
+  };
+
+  export const RemotionComposition = () => {
+    return (
+      <Composition
+        id="MotionGraphic"
+        component={MotionGraphic}
+        durationInFrames={${totalFrames}}
+        fps={${fps2}}
+        width={${width}}
+        height={${height}}
+      />
+    );
+  };
+`;
+}
+function generateRootIndex2() {
+  return `import { registerRoot } from "remotion";
+import { RemotionComposition } from "./Composition";
+
+registerRoot(RemotionComposition);
+`;
+}
+function generateRemotionConfig2() {
+  return `import { Config } from "@remotion/cli/config";
+
+Config.setVideoImageFormat("jpeg");
+Config.setOverwriteOutput(true);
+`;
+}
+function generatePackageJson2(projectName) {
+  return JSON.stringify({
+    name: projectName.toLowerCase().replace(/\s+/g, "-"),
+    version: "1.0.0",
+    private: true,
+    scripts: {
+      start: "npx remotion studio",
+      build: "npx remotion render src/index.ts MotionGraphic out/motion-graphic.mp4",
+      "build:gif": "npx remotion render src/index.ts MotionGraphic out/motion-graphic.gif --codec gif",
+      "build:webm": "npx remotion render src/index.ts MotionGraphic out/motion-graphic.webm --codec vp8"
+    },
+    dependencies: {
+      "@remotion/cli": "^4.0.0",
+      remotion: "^4.0.0",
+      react: "^18.2.0",
+      "react-dom": "^18.2.0"
+    },
+    devDependencies: {
+      "@types/react": "^18.2.0",
+      typescript: "^5.4.0"
+    }
+  }, null, 2);
+}
+function generateBuildScript2(assemblyDir, outputPath) {
+  return `#!/bin/bash
+# Brandly Motion Graphics Build Script
+# Generated: ${new Date().toISOString()}
+
+set -e
+
+echo "\uD83C\uDFAC Building motion graphic..."
+
+# Install dependencies if needed
+if [ ! -d "node_modules" ]; then
+  echo "\uD83D\uDCE6 Installing dependencies..."
+  npm install
+fi
+
+# Preview in Remotion Studio
+# npm start
+
+# Render the video
+echo "\uD83C\uDFA5 Rendering video..."
+npx remotion render src/index.ts MotionGraphic "${outputPath}" --codec h264
+
+echo "\u2705 Build complete: ${outputPath}"
+`;
+}
+function generatePreset(preset, fps2, width, height) {
+  switch (preset) {
+    case "title-reveal":
+      return {
+        fps: fps2,
+        width,
+        height,
+        scenes: [
+          {
+            id: "title",
+            duration: 4,
+            background: "linear-gradient(135deg, #0f0c29, #302b63, #24243e)",
+            elements: [
+              {
+                type: "rect",
+                x: 5,
+                y: 40,
+                width: 90,
+                height: 20,
+                color: "rgba(255,255,255,0.05)",
+                borderRadius: 16,
+                animation: {
+                  type: "scaleIn",
+                  duration: 0.8,
+                  easing: "spring"
+                }
+              },
+              {
+                type: "text",
+                x: 10,
+                y: 42,
+                width: 80,
+                text: "YOUR TITLE",
+                color: "#ffffff",
+                fontSize: 72,
+                fontWeight: "bold",
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "typewriter",
+                  duration: 1.5,
+                  delay: 0.3
+                }
+              },
+              {
+                type: "text",
+                x: 10,
+                y: 56,
+                width: 80,
+                text: "Subtitle goes here",
+                color: "rgba(255,255,255,0.7)",
+                fontSize: 28,
+                fontWeight: "normal",
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.8,
+                  delay: 1.8
+                }
+              },
+              {
+                type: "line",
+                x: 30,
+                y: 54,
+                width: 40,
+                color: "#6c63ff",
+                strokeWidth: 3,
+                animation: {
+                  type: "drawLine",
+                  duration: 0.6,
+                  delay: 1.5
+                }
+              }
+            ]
+          }
+        ]
+      };
+    case "product-showcase":
+      return {
+        fps: fps2,
+        width,
+        height,
+        scenes: [
+          {
+            id: "intro",
+            duration: 3,
+            background: "#0a0a0a",
+            elements: [
+              {
+                type: "circle",
+                x: 35,
+                y: 25,
+                width: 30,
+                height: 30,
+                color: "#6c63ff",
+                animation: {
+                  type: "scaleIn",
+                  duration: 0.6,
+                  easing: "spring"
+                }
+              },
+              {
+                type: "text",
+                x: 10,
+                y: 60,
+                width: 80,
+                text: "INTRODUCING",
+                color: "rgba(255,255,255,0.5)",
+                fontSize: 24,
+                fontWeight: "600",
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "slideInBottom",
+                  duration: 0.5,
+                  delay: 0.3
+                }
+              },
+              {
+                type: "text",
+                x: 10,
+                y: 68,
+                width: 80,
+                text: "Product Name",
+                color: "#ffffff",
+                fontSize: 56,
+                fontWeight: "bold",
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "slideInBottom",
+                  duration: 0.6,
+                  delay: 0.5,
+                  easing: "easeOut"
+                }
+              }
+            ]
+          },
+          {
+            id: "features",
+            duration: 4,
+            background: "#0a0a0a",
+            elements: [
+              {
+                type: "rect",
+                x: 5,
+                y: 10,
+                width: 27,
+                height: 35,
+                color: "#1a1a2e",
+                borderRadius: 12,
+                animation: {
+                  type: "slideInLeft",
+                  duration: 0.5,
+                  delay: 0
+                }
+              },
+              {
+                type: "text",
+                x: 7,
+                y: 15,
+                width: 23,
+                text: "Fast",
+                color: "#6c63ff",
+                fontSize: 28,
+                fontWeight: "bold",
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.4,
+                  delay: 0.3
+                }
+              },
+              {
+                type: "text",
+                x: 7,
+                y: 25,
+                width: 23,
+                text: "10x faster than competitors",
+                color: "rgba(255,255,255,0.6)",
+                fontSize: 14,
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.4,
+                  delay: 0.5
+                }
+              },
+              {
+                type: "rect",
+                x: 36,
+                y: 10,
+                width: 27,
+                height: 35,
+                color: "#1a1a2e",
+                borderRadius: 12,
+                animation: {
+                  type: "slideInLeft",
+                  duration: 0.5,
+                  delay: 0.2
+                }
+              },
+              {
+                type: "text",
+                x: 38,
+                y: 15,
+                width: 23,
+                text: "Secure",
+                color: "#6c63ff",
+                fontSize: 28,
+                fontWeight: "bold",
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.4,
+                  delay: 0.5
+                }
+              },
+              {
+                type: "text",
+                x: 38,
+                y: 25,
+                width: 23,
+                text: "Enterprise-grade encryption",
+                color: "rgba(255,255,255,0.6)",
+                fontSize: 14,
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.4,
+                  delay: 0.7
+                }
+              },
+              {
+                type: "rect",
+                x: 67,
+                y: 10,
+                width: 27,
+                height: 35,
+                color: "#1a1a2e",
+                borderRadius: 12,
+                animation: {
+                  type: "slideInLeft",
+                  duration: 0.5,
+                  delay: 0.4
+                }
+              },
+              {
+                type: "text",
+                x: 69,
+                y: 15,
+                width: 23,
+                text: "Simple",
+                color: "#6c63ff",
+                fontSize: 28,
+                fontWeight: "bold",
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.4,
+                  delay: 0.7
+                }
+              },
+              {
+                type: "text",
+                x: 69,
+                y: 25,
+                width: 23,
+                text: "Setup in under 2 minutes",
+                color: "rgba(255,255,255,0.6)",
+                fontSize: 14,
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.4,
+                  delay: 0.9
+                }
+              }
+            ]
+          },
+          {
+            id: "cta",
+            duration: 3,
+            background: "linear-gradient(135deg, #6c63ff, #3f3d99)",
+            elements: [
+              {
+                type: "text",
+                x: 10,
+                y: 35,
+                width: 80,
+                text: "Get Started Today",
+                color: "#ffffff",
+                fontSize: 64,
+                fontWeight: "bold",
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "scaleIn",
+                  duration: 0.6,
+                  easing: "spring"
+                }
+              },
+              {
+                type: "rect",
+                x: 30,
+                y: 55,
+                width: 40,
+                height: 10,
+                color: "#ffffff",
+                borderRadius: 50,
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.5,
+                  delay: 0.5
+                }
+              },
+              {
+                type: "text",
+                x: 30,
+                y: 56.5,
+                width: 40,
+                text: "Start Free Trial \u2192",
+                color: "#6c63ff",
+                fontSize: 24,
+                fontWeight: "bold",
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.5,
+                  delay: 0.6
+                }
+              }
+            ]
+          }
+        ]
+      };
+    case "kinetic-text":
+      return {
+        fps: fps2,
+        width,
+        height,
+        scenes: [
+          {
+            id: "word1",
+            duration: 1.5,
+            background: "#0f0f0f",
+            elements: [
+              {
+                type: "text",
+                x: 10,
+                y: 30,
+                width: 80,
+                text: "CREATE",
+                color: "#ffffff",
+                fontSize: 120,
+                fontWeight: "900",
+                fontFamily: "Impact, sans-serif",
+                animation: {
+                  type: "scaleIn",
+                  duration: 0.3,
+                  easing: "spring"
+                }
+              }
+            ]
+          },
+          {
+            id: "word2",
+            duration: 1.5,
+            background: "#1a1a2e",
+            elements: [
+              {
+                type: "text",
+                x: 10,
+                y: 30,
+                width: 80,
+                text: "STUNNING",
+                color: "#6c63ff",
+                fontSize: 120,
+                fontWeight: "900",
+                fontFamily: "Impact, sans-serif",
+                animation: {
+                  type: "slideInLeft",
+                  duration: 0.3,
+                  easing: "spring"
+                }
+              }
+            ]
+          },
+          {
+            id: "word3",
+            duration: 1.5,
+            background: "#0f0f0f",
+            elements: [
+              {
+                type: "text",
+                x: 10,
+                y: 30,
+                width: 80,
+                text: "MOTION",
+                color: "#ffffff",
+                fontSize: 120,
+                fontWeight: "900",
+                fontFamily: "Impact, sans-serif",
+                animation: {
+                  type: "slideInRight",
+                  duration: 0.3,
+                  easing: "spring"
+                }
+              }
+            ]
+          },
+          {
+            id: "word4",
+            duration: 2,
+            background: "linear-gradient(135deg, #6c63ff, #3f3d99)",
+            elements: [
+              {
+                type: "text",
+                x: 10,
+                y: 25,
+                width: 80,
+                text: "GRAPHICS",
+                color: "#ffffff",
+                fontSize: 100,
+                fontWeight: "900",
+                fontFamily: "Impact, sans-serif",
+                animation: {
+                  type: "bounce",
+                  duration: 0.8,
+                  easing: "spring"
+                }
+              },
+              {
+                type: "text",
+                x: 10,
+                y: 55,
+                width: 80,
+                text: "with brandly + remotion",
+                color: "rgba(255,255,255,0.8)",
+                fontSize: 32,
+                fontWeight: "normal",
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.5,
+                  delay: 0.5
+                }
+              }
+            ]
+          }
+        ]
+      };
+    case "stats-counter":
+      return {
+        fps: fps2,
+        width,
+        height,
+        scenes: [
+          {
+            id: "stats",
+            duration: 5,
+            background: "#0a0a0a",
+            elements: [
+              {
+                type: "text",
+                x: 10,
+                y: 8,
+                width: 80,
+                text: "BY THE NUMBERS",
+                color: "rgba(255,255,255,0.4)",
+                fontSize: 20,
+                fontWeight: "600",
+                fontFamily: "Arial, sans-serif",
+                letterSpacing: 8,
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.5
+                }
+              },
+              {
+                type: "text",
+                x: 5,
+                y: 25,
+                width: 25,
+                text: "10000",
+                color: "#6c63ff",
+                fontSize: 64,
+                fontWeight: "bold",
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "countUp",
+                  duration: 2,
+                  delay: 0.3
+                }
+              },
+              {
+                type: "text",
+                x: 5,
+                y: 42,
+                width: 25,
+                text: "Users",
+                color: "rgba(255,255,255,0.6)",
+                fontSize: 20,
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.4,
+                  delay: 0.5
+                }
+              },
+              {
+                type: "text",
+                x: 37,
+                y: 25,
+                width: 25,
+                text: "500",
+                color: "#ff6b6b",
+                fontSize: 64,
+                fontWeight: "bold",
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "countUp",
+                  duration: 2,
+                  delay: 0.6
+                }
+              },
+              {
+                type: "text",
+                x: 37,
+                y: 42,
+                width: 25,
+                text: "Projects",
+                color: "rgba(255,255,255,0.6)",
+                fontSize: 20,
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.4,
+                  delay: 0.8
+                }
+              },
+              {
+                type: "text",
+                x: 70,
+                y: 25,
+                width: 25,
+                text: "99",
+                color: "#4ecdc4",
+                fontSize: 64,
+                fontWeight: "bold",
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "countUp",
+                  duration: 2,
+                  delay: 0.9
+                }
+              },
+              {
+                type: "text",
+                x: 70,
+                y: 42,
+                width: 25,
+                text: "% Uptime",
+                color: "rgba(255,255,255,0.6)",
+                fontSize: 20,
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.4,
+                  delay: 1.1
+                }
+              },
+              {
+                type: "line",
+                x: 5,
+                y: 55,
+                width: 90,
+                color: "rgba(255,255,255,0.1)",
+                strokeWidth: 1
+              },
+              {
+                type: "text",
+                x: 10,
+                y: 60,
+                width: 80,
+                text: "Trusted by teams worldwide",
+                color: "rgba(255,255,255,0.5)",
+                fontSize: 24,
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.6,
+                  delay: 2.5
+                }
+              }
+            ]
+          }
+        ]
+      };
+    default:
+      return {
+        fps: fps2,
+        width,
+        height,
+        scenes: [
+          {
+            id: "default",
+            duration: 3,
+            background: "#000000",
+            elements: [
+              {
+                type: "text",
+                x: 10,
+                y: 40,
+                width: 80,
+                text: "Motion Graphic",
+                color: "#ffffff",
+                fontSize: 64,
+                fontWeight: "bold",
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.8
+                }
+              }
+            ]
+          }
+        ]
+      };
+  }
+}
+function createMotionGraphicsTool(ctx) {
+  return {
+    name: "brandly_motion_graphics",
+    description: "Create animated motion graphics using Remotion \u2014 kinetic typography, product showcases, stat counters, title reveals, and custom scene-based animations. Generates a complete Remotion project with spring physics, easing, and frame-accurate timing.",
+    parameters: {
+      type: "object",
+      properties: {
+        projectID: {
+          type: "string",
+          description: "The project UUID"
+        },
+        preset: {
+          type: "string",
+          enum: [
+            "title-reveal",
+            "product-showcase",
+            "kinetic-text",
+            "stats-counter",
+            "custom"
+          ],
+          description: "Preset template. Use 'custom' to provide your own scenes."
+        },
+        scenes: {
+          type: "array",
+          description: "Custom scenes array (required when preset='custom'). Each scene has id, duration, background, and elements.",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string" },
+              duration: { type: "number" },
+              background: { type: "string" },
+              backgroundImage: { type: "string" },
+              elements: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    type: {
+                      type: "string",
+                      enum: [
+                        "text",
+                        "rect",
+                        "circle",
+                        "line",
+                        "image"
+                      ]
+                    },
+                    id: { type: "string" },
+                    x: { type: "number" },
+                    y: { type: "number" },
+                    width: { type: "number" },
+                    height: { type: "number" },
+                    text: { type: "string" },
+                    color: { type: "string" },
+                    fontSize: { type: "number" },
+                    fontWeight: { type: "string" },
+                    fontFamily: { type: "string" },
+                    borderRadius: { type: "number" },
+                    opacity: { type: "number" },
+                    rotation: { type: "number" },
+                    strokeWidth: { type: "number" },
+                    src: { type: "string" },
+                    animation: {
+                      type: "object",
+                      properties: {
+                        type: {
+                          type: "string",
+                          enum: [
+                            "fadeIn",
+                            "fadeOut",
+                            "slideInLeft",
+                            "slideInRight",
+                            "slideInTop",
+                            "slideInBottom",
+                            "scaleIn",
+                            "scaleOut",
+                            "rotateIn",
+                            "typewriter",
+                            "bounce",
+                            "pulse",
+                            "blurIn",
+                            "countUp",
+                            "drawLine"
+                          ]
+                        },
+                        duration: { type: "number" },
+                        delay: { type: "number" },
+                        easing: {
+                          type: "string",
+                          enum: [
+                            "linear",
+                            "easeIn",
+                            "easeOut",
+                            "easeInOut",
+                            "spring"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  required: ["type", "x", "y"]
+                }
+              }
+            },
+            required: ["id", "duration", "elements"]
+          }
+        },
+        fps: {
+          type: "number",
+          default: 30,
+          description: "Frames per second"
+        },
+        width: {
+          type: "number",
+          default: 1920,
+          description: "Output width in pixels"
+        },
+        height: {
+          type: "number",
+          default: 1080,
+          description: "Output height in pixels"
+        },
+        outputPath: {
+          type: "string",
+          description: "Output file path for rendered video"
+        },
+        autoRender: {
+          type: "boolean",
+          default: false,
+          description: "Automatically render after creating the project"
+        }
+      },
+      required: ["projectID", "preset"]
+    },
+    execute: async (args) => {
+      const {
+        projectID,
+        preset,
+        scenes,
+        fps: fpsArg,
+        width: widthArg,
+        height: heightArg,
+        outputPath,
+        autoRender
+      } = args;
+      if (!isValidProjectId(projectID)) {
+        throw new Error("Invalid project ID format");
+      }
+      const project = await ctx.readProject(projectID);
+      if (!project) {
+        throw new Error(`Project not found: ${projectID}`);
+      }
+      const fps2 = fpsArg || 30;
+      const width = widthArg || 1920;
+      const height = heightArg || 1080;
+      const projectName = project.name || `brandly-${projectID.slice(0, 8)}`;
+      let mgProject;
+      if (preset === "custom") {
+        if (!scenes || !Array.isArray(scenes) || scenes.length === 0) {
+          throw new Error("scenes array is required when using preset='custom'");
+        }
+        mgProject = {
+          fps: fps2,
+          width,
+          height,
+          scenes,
+          style: "custom"
+        };
+      } else {
+        mgProject = generatePreset(preset, fps2, width, height);
+      }
+      const compositionCode = generateFullComposition(mgProject);
+      const assemblyDir = join16(ctx.directory, "motion-graphics", projectID);
+      const srcDir = join16(assemblyDir, "src");
+      const outDir = join16(assemblyDir, "out");
+      await mkdir10(srcDir, { recursive: true });
+      await mkdir10(outDir, { recursive: true });
+      await writeFile8(join16(srcDir, "Composition.tsx"), compositionCode, "utf-8");
+      await writeFile8(join16(srcDir, "index.ts"), generateRootIndex2(), "utf-8");
+      await writeFile8(join16(assemblyDir, "remotion.config.ts"), generateRemotionConfig2(), "utf-8");
+      await writeFile8(join16(assemblyDir, "package.json"), generatePackageJson2(projectName), "utf-8");
+      const finalOutputPath = outputPath || join16(outDir, `motion-graphic-${Date.now()}.mp4`);
+      const buildScript = generateBuildScript2(assemblyDir, finalOutputPath);
+      await writeFile8(join16(assemblyDir, "build.sh"), buildScript, "utf-8");
+      const meta = {
+        id: `mg-${Date.now()}`,
+        projectId: projectID,
+        projectName,
+        preset,
+        fps: fps2,
+        width,
+        height,
+        sceneCount: mgProject.scenes.length,
+        totalDuration: mgProject.scenes.reduce((sum, s) => sum + s.duration, 0),
+        assemblyDir,
+        compositionPath: join16(srcDir, "Composition.tsx"),
+        outputPath: finalOutputPath,
+        status: "created",
+        createdAt: new Date().toISOString()
+      };
+      await writeFile8(join16(assemblyDir, "motion-graphics-meta.json"), JSON.stringify(meta, null, 2), "utf-8");
+      if (!project.phases) {
+        project.phases = {};
+      }
+      const currentPhase = project.currentPhase;
+      if (!project.phases[currentPhase]) {
+        project.phases[currentPhase] = {
+          status: "running",
+          startedAt: new Date().toISOString()
+        };
+      }
+      const phaseOutput = project.phases[currentPhase].output ? JSON.parse(project.phases[currentPhase].output || "{}") : {};
+      if (!phaseOutput.motionGraphics) {
+        phaseOutput.motionGraphics = [];
+      }
+      phaseOutput.motionGraphics.push({
+        mgId: meta.id,
+        preset,
+        assemblyDir,
+        totalDuration: meta.totalDuration,
+        outputPath: finalOutputPath,
+        createdAt: new Date().toISOString()
+      });
+      project.phases[currentPhase].output = JSON.stringify(phaseOutput);
+      project.updatedAt = new Date().toISOString();
+      await ctx.writeProject(projectID, project);
+      const nextSteps = [
+        `1. cd ${assemblyDir}`,
+        "2. Install dependencies: npm install",
+        "3. Preview in Remotion Studio: npm start",
+        `4. Render final video: npm run build`,
+        `   Output: ${finalOutputPath}`
+      ];
+      if (autoRender) {
+        nextSteps.push("5. Auto-render \u2014 run: bash " + join16(assemblyDir, "build.sh"));
+      }
+      return {
+        projectId: projectID,
+        mgId: meta.id,
+        projectName,
+        preset,
+        assemblyDir,
+        sceneCount: mgProject.scenes.length,
+        totalDuration: `${meta.totalDuration}s`,
+        compositionPath: join16(srcDir, "Composition.tsx"),
+        outputPath: finalOutputPath,
+        status: "created",
+        message: `Motion graphic project created: ${preset} (${meta.totalDuration}s, ${mgProject.scenes.length} scenes)`,
+        nextSteps
+      };
+    }
+  };
+}
+
 // src/index.ts
 function brandlyPlugin({
   directory
@@ -3926,7 +5214,8 @@ function brandlyPlugin({
     createBrandKitTool(ctx),
     createBatchVariationsTool(ctx),
     createAutoCaptionTool(ctx),
-    createSceneConsistencyTool(ctx)
+    createSceneConsistencyTool(ctx),
+    createMotionGraphicsTool(ctx)
   ];
   return {
     name: "brandly",
