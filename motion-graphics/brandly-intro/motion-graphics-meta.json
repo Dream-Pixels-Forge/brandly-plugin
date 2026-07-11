@@ -1,0 +1,16 @@
+{
+  "id": "mg-brandly-intro",
+  "projectId": "brandly-intro",
+  "projectName": "brandly-intro",
+  "preset": "custom",
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "sceneCount": 3,
+  "totalDuration": 10,
+  "assemblyDir": "motion-graphics/brandly-intro",
+  "compositionPath": "src/Composition.tsx",
+  "outputPath": "out/motion-graphic.mp4",
+  "status": "created",
+  "createdAt": "2026-07-11T18:23:06+01:00"
+}

@@ -3904,30 +3904,12 @@ import { execFileSync } from "child_process";
 function jsStr(value) {
   return JSON.stringify(value ?? "");
 }
-function easingToRemotion(easing) {
-  switch (easing) {
-    case "easeIn":
-      return "[0.4, 0, 1, 1]";
-    case "easeOut":
-      return "[0, 0, 0.2, 1]";
-    case "easeInOut":
-      return "[0.4, 0, 0.2, 1]";
-    case "spring":
-      return "spring({ config: { damping: 10, stiffness: 100 } })";
-    case "linear":
-    default:
-      return "[0, 0, 1, 1]";
-  }
-}
 function generateElementAnimation(el, elementVar) {
   const anim = el.animation;
   if (!anim)
     return "";
   const dur = anim.duration ?? 0.5;
   const delay = anim.delay ?? 0;
-  const isSpring = anim.easing === "spring";
-  const easingValue = isSpring ? "spring({ config: { damping: 10, stiffness: 100 } })" : easingToRemotion(anim.easing);
-  const easingOption = `easing: ${easingValue}, `;
   const startFrame = `(${delay} * fps)`;
   const endFrame = `(${delay} + ${dur}) * fps`;
   switch (anim.type) {
@@ -3935,92 +3917,92 @@ function generateElementAnimation(el, elementVar) {
       return `
     // fadeIn ${elementVar}
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, ${el.opacity ?? 1}], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+       frame, ${startFrame}, ${endFrame}, [0, ${el.opacity ?? 1}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
     case "fadeOut":
       return `
     // fadeOut ${elementVar}
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [${el.opacity ?? 1}, 0], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [${el.opacity ?? 1}, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
     case "slideInLeft":
       return `
     // slideInLeft ${elementVar}
     const ${elementVar}_x = interpolate(
-      frame, ${startFrame}, ${endFrame}, [-100, ${el.x}], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [-100, ${el.x}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
     case "slideInRight":
       return `
     // slideInRight ${elementVar}
     const ${elementVar}_x = interpolate(
-      frame, ${startFrame}, ${endFrame}, [110, ${el.x}], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [110, ${el.x}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
     case "slideInTop":
       return `
     // slideInTop ${elementVar}
     const ${elementVar}_y = interpolate(
-      frame, ${startFrame}, ${endFrame}, [-100, ${el.y}], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [-100, ${el.y}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
     case "slideInBottom":
       return `
     // slideInBottom ${elementVar}
     const ${elementVar}_y = interpolate(
-      frame, ${startFrame}, ${endFrame}, [110, ${el.y}], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [110, ${el.y}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
     case "scaleIn":
       return `
     // scaleIn ${elementVar}
     const ${elementVar}_scale = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
     case "scaleOut":
       return `
     // scaleOut ${elementVar}
     const ${elementVar}_scale = interpolate(
-      frame, ${startFrame}, ${endFrame}, [1, 0], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [1, 0], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
     case "rotateIn":
       return `
     // rotateIn ${elementVar}
     const ${elementVar}_rotation = interpolate(
-      frame, ${startFrame}, ${endFrame}, [-180, ${el.rotation ?? 0}], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [-180, ${el.rotation ?? 0}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
     case "typewriter":
       return `
     // typewriter ${elementVar}
     const ${elementVar}_charCount = Math.floor(
-      interpolate(frame, ${startFrame}, ${endFrame}, [0, ${(el.text || "").length}], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+      interpolate(frame, ${startFrame}, ${endFrame}, [0, ${(el.text || "").length}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
     );`;
     case "bounce":
       return `
     // bounce ${elementVar}
     const ${elementVar}_bounce = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_scale = 1 + Math.sin(${elementVar}_bounce * Math.PI * 3) * 0.1 * (1 - ${elementVar}_bounce);
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
     case "pulse":
       return `
@@ -4028,28 +4010,28 @@ function generateElementAnimation(el, elementVar) {
     const ${elementVar}_pulse = Math.sin((frame - ${startFrame}) / ${dur} * fps * Math.PI * 2) * 0.5 + 0.5;
     const ${elementVar}_scale = 1 + ${elementVar}_pulse * 0.05;
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, ${el.opacity ?? 1}], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+       frame, ${startFrame}, ${endFrame}, [0, ${el.opacity ?? 1}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
     case "blurIn":
       return `
     // blurIn ${elementVar}
     const ${elementVar}_blur = interpolate(
-      frame, ${startFrame}, ${endFrame}, [20, 0], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [20, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
     case "countUp":
       return `
     // countUp ${elementVar}
     const ${elementVar}_count = Math.floor(
-       interpolate(frame, ${startFrame}, ${endFrame}, [0, ${parseInt(jsStr(el.text || "100"), 10) || 100}], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+       interpolate(frame, ${startFrame}, ${endFrame}, [0, ${parseInt(jsStr(el.text || "100"), 10) || 100}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
     );`;
     case "drawLine":
       return `
     // drawLine ${elementVar}
     const ${elementVar}_progress = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
     default:
       return "";

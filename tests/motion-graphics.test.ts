@@ -127,7 +127,7 @@ describe("brandly_motion_graphics", () => {
     expect(code).toContain("el0_0_text.slice(0, el0_0_charCount)");
   });
 
-  it("passes spring easing through to interpolate", async () => {
+  it("does not emit invalid easing into interpolate for spring", async () => {
     const id = randomUUID();
     await makeProject(id);
 
@@ -157,11 +157,10 @@ describe("brandly_motion_graphics", () => {
     });
 
     const code = await readFile(result.compositionPath, "utf-8");
-    expect(code).toContain("easing: spring(");
-    expect(code).not.toContain("...spring(");
+    expect(code).not.toContain("easing:");
   });
 
-  it("passes non-spring easing curves through to interpolate", async () => {
+  it("does not emit invalid easing into interpolate for named easings", async () => {
     const id = randomUUID();
     await makeProject(id);
 
@@ -191,7 +190,7 @@ describe("brandly_motion_graphics", () => {
     });
 
     const code = await readFile(result.compositionPath, "utf-8");
-    expect(code).toContain("easing: [0, 0, 0.2, 1]");
+    expect(code).not.toContain("easing:");
   });
 
   it("rejects custom preset without scenes", async () => {
