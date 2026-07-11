@@ -1,7 +1,11 @@
+<div align="center">
+
 # Brandly Plugin
 <img width="1983" height="793" alt="banner" src="https://github.com/user-attachments/assets/246d040d-8029-445f-b3c9-f4b68c6c78ce" />
 
 AI product video orchestrator for OpenCode. Turns product ideas into platform-ready marketing videos using a multi-agent pipeline.
+
+</div>
 
 ## Install
 
@@ -48,6 +52,15 @@ That's it. OpenCode auto-installs dependencies via `bun install` on startup and 
 | `brandly_save_artifact` | Save a subagent's output to the project folder |
 | `brandly_list_projects` | List all Brandly projects |
 | `brandly_memory` | View/update user preferences (liked hooks, preferred style) |
+| `brandly_templates` | List available style templates |
+| `brandly_cancel` | Cancel a running project |
+| `brandly_progress` | View real-time pipeline progress |
+| `brandly_export` | Export final video or specific clips |
+| `brandly_download` | Download generated assets |
+| `brandly_select_provider` | Switch between video generation providers (Higgsfield, Kling, OpenArt) |
+| `brandly_video_edit` | Edit individual video clips (trim, crop, adjust) |
+| `brandly_render_video` | Render final video with Remotion |
+| `brandly_assemble` | Assemble all clips into a montage with transitions, text overlays, and audio |
 
 ## Pipeline
 
@@ -69,12 +82,14 @@ When you start a project, Brandly creates these in your workspace:
 imagen/{id}/                Generated images
 videgen/{id}/               Generated videos
 audgen/{id}/                Generated audio
+assembly/{id}/              Remotion assembly projects
 ```
 
 ## Requirements
 
 - [OpenCode](https://opencode.ai) with plugin support
 - [Bun](https://bun.sh) runtime
+- [Remotion](https://remotion.dev) (for video assembly and rendering)
 - Higgsfield account (for image/video generation)
 - Magnific account (for audio generation)
 - Kling
@@ -96,6 +111,7 @@ Brandly dispatches agents that use these MCP tools:
 ```bash
 bun install
 bun build src/index.ts --outdir dist --target bun
+bun test
 ```
 
 ## License
