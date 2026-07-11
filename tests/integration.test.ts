@@ -34,10 +34,10 @@ describe("brandlyPlugin", () => {
     await rm(testDir, { recursive: true, force: true });
   });
 
-  it("should export all 20 tools", () => {
+  it("should export all 21 tools", () => {
     const plugin = brandlyPlugin({ directory: testDir });
     expect(plugin.name).toBe("brandly");
-    expect(plugin.tools).toHaveLength(20);
+    expect(plugin.tools).toHaveLength(21);
   });
 
   it("should have all required tool names", () => {
@@ -63,6 +63,7 @@ describe("brandlyPlugin", () => {
     expect(toolNames).toContain("brandly_video_edit");
     expect(toolNames).toContain("brandly_render_video");
     expect(toolNames).toContain("brandly_assemble");
+    expect(toolNames).toContain("brandly_multi_platform_export");
   });
 
   it("should create project with brandly_start", async () => {

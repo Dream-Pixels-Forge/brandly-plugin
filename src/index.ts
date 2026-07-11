@@ -21,6 +21,7 @@ import { createProviderTool } from "./tools/provider";
 import { createVideoEditTool } from "./tools/video-edit";
 import { createVideoRenderTool } from "./tools/video-render";
 import { createAssemblyTool } from "./tools/assembly";
+import { createMultiPlatformExportTool } from "./tools/multi-platform-export";
 
 export default function brandlyPlugin({
   directory,
@@ -50,6 +51,7 @@ export default function brandlyPlugin({
     createVideoEditTool(ctx),
     createVideoRenderTool(ctx),
     createAssemblyTool(ctx),
+    createMultiPlatformExportTool(ctx),
   ];
 
   return {
