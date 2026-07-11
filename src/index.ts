@@ -22,6 +22,10 @@ import { createVideoEditTool } from "./tools/video-edit";
 import { createVideoRenderTool } from "./tools/video-render";
 import { createAssemblyTool } from "./tools/assembly";
 import { createMultiPlatformExportTool } from "./tools/multi-platform-export";
+import { createBrandKitTool } from "./tools/brand-kit";
+import { createBatchVariationsTool } from "./tools/batch-variations";
+import { createAutoCaptionTool } from "./tools/auto-caption";
+import { createSceneConsistencyTool } from "./tools/scene-consistency";
 
 export default function brandlyPlugin({
   directory,
@@ -52,6 +56,10 @@ export default function brandlyPlugin({
     createVideoRenderTool(ctx),
     createAssemblyTool(ctx),
     createMultiPlatformExportTool(ctx),
+    createBrandKitTool(ctx),
+    createBatchVariationsTool(ctx),
+    createAutoCaptionTool(ctx),
+    createSceneConsistencyTool(ctx),
   ];
 
   return {
