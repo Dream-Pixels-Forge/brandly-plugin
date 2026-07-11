@@ -34,10 +34,10 @@ describe("brandlyPlugin", () => {
     await rm(testDir, { recursive: true, force: true });
   });
 
-  it("should export all 24 tools", () => {
+  it("should export all 25 tools", () => {
     const plugin = brandlyPlugin({ directory: testDir });
     expect(plugin.name).toBe("brandly");
-    expect(plugin.tools).toHaveLength(24);
+    expect(plugin.tools).toHaveLength(25);
   });
 
   it("should have all required tool names", () => {

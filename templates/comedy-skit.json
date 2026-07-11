@@ -1,0 +1,48 @@
+{
+  "name": "comedy-skit",
+  "description": "Humorous skit-based product demo with relatable characters and punchy timing",
+  "style": "comedy-skit",
+  "duration": {
+    "min": 15,
+    "max": 30,
+    "optimal": 20
+  },
+  "hooks": [
+    "Relatable frustration moment",
+    "Unexpected product saves the day",
+    "Exaggerated before state",
+    "Funny reaction to benefit"
+  ],
+  "narrative": {
+    "structure": "setup → problem → absurd escalation → product saves → punchline CTA",
+    "pacing": "fast, punchy, reaction-driven",
+    "transitions": "jump cuts, zoom reactions, wipe transitions"
+  },
+  "camera": [
+    "Single-camera master shot",
+    "Reaction close-up punch-in",
+    "Overhead for comedic effect",
+    "POV from problem perspective",
+    "Slow zoom during punchline"
+  ],
+  "lighting": [
+    "Three-point sitcom setup",
+    "Practical lamps in scene",
+    "Flat even lighting for clarity",
+    "Slightly warm cozy interior"
+  ],
+  "music": {
+    "style": "upbeat pop or comedy underscore",
+    "tempo": "110-130 BPM",
+    "mood": "funny, relatable, energetic"
+  },
+  "models": {
+    "image": ["flux_2", "nano_banana_2", "gpt_image_2"],
+    "video": ["kling3_0", "kling3_0_turbo", "hailuo"]
+  },
+  "platforms": {
+    "tiktok": { "aspect": "9:16", "duration": "15-20s" },
+    "instagram": { "aspect": "9:16", "duration": "20-30s" },
+    "youtube": { "aspect": "16:9", "duration": "20-30s" }
+  }
+}

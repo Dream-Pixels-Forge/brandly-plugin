@@ -1,8 +1,14 @@
 import { join } from "node:path";
-import { mkdir, writeFile, copyFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import type { ToolContext } from "../types";
 import { isValidProjectId } from "../constants";
+
+// Safely embed a user-supplied string as a JS string literal in generated code.
+function jsStr(value: unknown): string {
+  return JSON.stringify(value ?? "");
+}
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -89,8 +95,11 @@ function generateElementAnimation(
 
   const dur = anim.duration ?? 0.5;
   const delay = anim.delay ?? 0;
-  const easing = easingToRemotion(anim.easing);
   const isSpring = anim.easing === "spring";
+  const easingValue = isSpring
+    ? "spring({ config: { damping: 10, stiffness: 100 } })"
+    : easingToRemotion(anim.easing);
+  const easingOption = `easing: ${easingValue}, `;
 
   // Frame math helpers
   const startFrame = `(${delay} * fps)`;
@@ -101,135 +110,135 @@ function generateElementAnimation(
       return `
     // fadeIn ${elementVar}
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, ${el.opacity ?? 1}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, ${el.opacity ?? 1}], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
 
     case "fadeOut":
       return `
     // fadeOut ${elementVar}
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [${el.opacity ?? 1}, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [${el.opacity ?? 1}, 0], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
 
     case "slideInLeft":
       return `
     // slideInLeft ${elementVar}
     const ${elementVar}_x = interpolate(
-      frame, ${startFrame}, ${endFrame}, [-100, ${el.x}], ${isSpring ? `{ ...${easing}, extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }` : `{ extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }` }
+      frame, ${startFrame}, ${endFrame}, [-100, ${el.x}], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
 
     case "slideInRight":
       return `
     // slideInRight ${elementVar}
     const ${elementVar}_x = interpolate(
-      frame, ${startFrame}, ${endFrame}, [110, ${el.x}], ${isSpring ? `{ ...${easing}, extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }` : `{ extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }` }
+      frame, ${startFrame}, ${endFrame}, [110, ${el.x}], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
 
     case "slideInTop":
       return `
     // slideInTop ${elementVar}
     const ${elementVar}_y = interpolate(
-      frame, ${startFrame}, ${endFrame}, [-100, ${el.y}], ${isSpring ? `{ ...${easing}, extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }` : `{ extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }` }
+      frame, ${startFrame}, ${endFrame}, [-100, ${el.y}], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
 
     case "slideInBottom":
       return `
     // slideInBottom ${elementVar}
     const ${elementVar}_y = interpolate(
-      frame, ${startFrame}, ${endFrame}, [110, ${el.y}], ${isSpring ? `{ ...${easing}, extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }` : `{ extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }` }
+      frame, ${startFrame}, ${endFrame}, [110, ${el.y}], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
 
     case "scaleIn":
       return `
     // scaleIn ${elementVar}
     const ${elementVar}_scale = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], ${isSpring ? `{ ...${easing}, extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }` : `{ extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }` }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
 
     case "scaleOut":
       return `
     // scaleOut ${elementVar}
     const ${elementVar}_scale = interpolate(
-      frame, ${startFrame}, ${endFrame}, [1, 0], ${isSpring ? `{ ...${easing}, extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }` : `{ extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }` }
+      frame, ${startFrame}, ${endFrame}, [1, 0], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [1, 0], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
 
     case "rotateIn":
       return `
     // rotateIn ${elementVar}
     const ${elementVar}_rotation = interpolate(
-      frame, ${startFrame}, ${endFrame}, [-180, ${el.rotation ?? 0}], ${isSpring ? `{ ...${easing}, extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }` : `{ extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }` }
+      frame, ${startFrame}, ${endFrame}, [-180, ${el.rotation ?? 0}], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
 
     case "typewriter":
       return `
     // typewriter ${elementVar}
     const ${elementVar}_charCount = Math.floor(
-      interpolate(frame, ${startFrame}, ${endFrame}, [0, ${(el.text || "").length}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+      interpolate(frame, ${startFrame}, ${endFrame}, [0, ${(el.text || "").length}], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
     );`;
 
     case "bounce":
       return `
     // bounce ${elementVar}
     const ${elementVar}_bounce = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_scale = 1 + Math.sin(${elementVar}_bounce * Math.PI * 3) * 0.1 * (1 - ${elementVar}_bounce);
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
 
     case "pulse":
       return `
     // pulse ${elementVar}
-    const ${elementVar}_pulse = Math.sin((frame - ${startFrame}) / ${dur * fps} * Math.PI * 2) * 0.5 + 0.5;
+    const ${elementVar}_pulse = Math.sin((frame - ${startFrame}) / ${dur} * fps * Math.PI * 2) * 0.5 + 0.5;
     const ${elementVar}_scale = 1 + ${elementVar}_pulse * 0.05;
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, ${el.opacity ?? 1}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, ${el.opacity ?? 1}], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
 
     case "blurIn":
       return `
     // blurIn ${elementVar}
     const ${elementVar}_blur = interpolate(
-      frame, ${startFrame}, ${endFrame}, [20, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [20, 0], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
 
     case "countUp":
       return `
     // countUp ${elementVar}
     const ${elementVar}_count = Math.floor(
-      interpolate(frame, ${startFrame}, ${endFrame}, [0, ${parseInt(el.text || "100", 10) || 100}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+       interpolate(frame, ${startFrame}, ${endFrame}, [0, ${parseInt(jsStr(el.text || "100"), 10) || 100}], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
     );`;
 
     case "drawLine":
       return `
     // drawLine ${elementVar}
     const ${elementVar}_progress = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
 
     default:
@@ -250,10 +259,10 @@ function generateElementStyle(
 
   if (el.width) parts.push(`width: '${el.width}%'`);
   if (el.height) parts.push(`height: '${el.height}%'`);
-  if (el.color && el.type !== "line") parts.push(`color: '${el.color}'`);
+  if (el.color && el.type !== "line") parts.push(`color: ${jsStr(el.color)}`);
   if (el.fontSize) parts.push(`fontSize: ${el.fontSize}`);
-  if (el.fontWeight) parts.push(`fontWeight: '${el.fontWeight}'`);
-  if (el.fontFamily) parts.push(`fontFamily: '${el.fontFamily}'`);
+  if (el.fontWeight) parts.push(`fontWeight: ${jsStr(el.fontWeight)}`);
+  if (el.fontFamily) parts.push(`fontFamily: ${jsStr(el.fontFamily)}`);
   if (el.borderRadius) parts.push(`borderRadius: ${el.borderRadius}`);
   if (el.strokeWidth) parts.push(`strokeWidth: ${el.strokeWidth}`);
 
@@ -306,23 +315,20 @@ function generateElementJSX(
   index: number,
   sceneIndex: number
 ): string {
-  const varName = `el${sceneIndex}_${index}`;
-  const animCode = generateElementAnimation(el, varName);
-  const style = generateElementStyle(el, varName);
   const tag = `el${sceneIndex}_${index}`;
+  const style = generateElementStyle(el, tag);
 
   let innerJSX = "";
 
   switch (el.type) {
     case "text": {
-      const textContent = el.text || "Text";
-      // typewriter uses charCount slicing
       if (el.animation?.type === "typewriter") {
+        // _text and _charCount are declared in generateSceneComponent
         innerJSX = `<span>{${tag}_text.slice(0, ${tag}_charCount)}</span>`;
       } else if (el.animation?.type === "countUp") {
         innerJSX = `<span>{${tag}_count}</span>`;
       } else {
-        innerJSX = `<span>${textContent}</span>`;
+        innerJSX = `<span>{${tag}_text}</span>`;
       }
       break;
     }
@@ -333,23 +339,23 @@ function generateElementJSX(
       innerJSX = "";
       break;
     case "line": {
-      const lineColor = el.color || "#ffffff";
+      const lineColor = jsStr(el.color || "#ffffff");
       const sw = el.strokeWidth || 2;
       if (el.animation?.type === "drawLine") {
-        innerJSX = `<div style={{ position: 'absolute', left: '${el.x}%', top: '${el.y}%', width: '${el.width || 50}%', height: ${sw}px, background: ${lineColor}, transformOrigin: 'left', transform: 'scaleX(' + ${tag}_progress + ')' }} />`;
-        return animCode + "\n      " + innerJSX;
+        innerJSX = `<div style={{ position: 'absolute', left: '${el.x}%', top: '${el.y}%', width: '${el.width || 50}%', height: ${sw}, background: ${lineColor}, transformOrigin: 'left', transform: 'scaleX(' + ${tag}_progress + ')' }} />`;
+        return innerJSX;
       }
-      innerJSX = `<div style={{ ...${style}, height: ${sw}px, background: '${lineColor}' }} />`;
-      return animCode + "\n      " + innerJSX;
+      innerJSX = `<div style={{ ...${style}, height: ${sw}, background: ${lineColor} }} />`;
+      return innerJSX;
     }
     case "image":
       if (!el.src) return "";
-      innerJSX = `<img src="${el.src}" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />`;
+      innerJSX = `<img src={${jsStr(el.src)}} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />`;
       break;
   }
 
   if (el.type === "rect" || el.type === "circle") {
-    const bg = el.color || "#ffffff";
+    const bg = jsStr(el.color || "#ffffff");
     const br =
       el.type === "circle"
         ? "borderRadius: '50%'"
@@ -358,12 +364,12 @@ function generateElementJSX(
         : "";
     const rectStyle = style.replace(
       /^\{/,
-      `{ ${br ? br + ", " : ""}background: '${bg}',`
+      `{ ${br ? br + ", " : ""}background: ${bg},`
     );
-    return animCode + `\n      <div style={${rectStyle}} />`;
+    return `<div style={${rectStyle}} />`;
   }
 
-  return animCode + `\n      <div style={${style}}>\n        ${innerJSX}\n      </div>`;
+  return `<div style={${style}}>\n        ${innerJSX}\n      </div>`;
 }
 
 function generateSceneComponent(
@@ -372,7 +378,7 @@ function generateSceneComponent(
   fps: number
 ): string {
   const compName = `Scene_${sceneIndex}`;
-  const bg = scene.background || "#000000";
+  const bg = jsStr(scene.background || "#000000");
   const durationFrames = scene.duration * fps;
 
   const elementBlocks = scene.elements
@@ -389,15 +395,27 @@ function generateSceneComponent(
     .filter(Boolean)
     .join("\n");
 
+  // Hoist each text element's content to a const so special characters
+  // (&, <, >) stay inside a normal JS scope, not a JSX child.
+  const textVars = scene.elements
+    .map((el, i) => {
+      if (el.type !== "text") return "";
+      const tag = `el${sceneIndex}_${i}`;
+      return `    const ${tag}_text = ${jsStr(el.text || "Text")};`;
+    })
+    .filter(Boolean)
+    .join("\n");
+
   return `
   // ── ${compName} (${scene.duration}s) ──
   const ${compName} = () => {
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();
+${textVars}
 ${animatedVars}
 
     return (
-      <AbsoluteFill style={{ background: '${bg}'${scene.backgroundImage ? `, backgroundImage: 'url(${scene.backgroundImage})', backgroundSize: 'cover'` : ""} }}>
+      <AbsoluteFill style={{ background: ${bg}${scene.backgroundImage ? `, backgroundImage: ${jsStr(`url(${scene.backgroundImage})`)}, backgroundSize: 'cover'` : ""} }}>
     ${elementBlocks}
       </AbsoluteFill>
     );
@@ -481,7 +499,7 @@ Config.setOverwriteOutput(true);
 function generatePackageJson(projectName: string): string {
   return JSON.stringify(
     {
-      name: projectName.toLowerCase().replace(/\s+/g, "-"),
+      name: (projectName.toLowerCase().replace(/[^a-z0-9-]/g, "-") || "brandly-motion-graphic"),
       version: "1.0.0",
       private: true,
       scripts: {
@@ -508,10 +526,7 @@ function generatePackageJson(projectName: string): string {
   );
 }
 
-function generateBuildScript(
-  assemblyDir: string,
-  outputPath: string
-): string {
+function generateBuildScript(outputPath: string): string {
   return `#!/bin/bash
 # Brandly Motion Graphics Build Script
 # Generated: ${new Date().toISOString()}
@@ -1402,7 +1417,7 @@ export function createMotionGraphicsTool(ctx: ToolContext) {
       const finalOutputPath =
         outputPath ||
         join(outDir, `motion-graphic-${Date.now()}.mp4`);
-      const buildScript = generateBuildScript(assemblyDir, finalOutputPath);
+      const buildScript = generateBuildScript(finalOutputPath);
       await writeFile(
         join(assemblyDir, "build.sh"),
         buildScript,
@@ -1474,10 +1489,29 @@ export function createMotionGraphicsTool(ctx: ToolContext) {
         `   Output: ${finalOutputPath}`,
       ];
 
+      // Optional: auto-render the project after scaffolding.
+      let renderStatus: string | undefined;
+      let renderOutput: string | undefined;
       if (autoRender) {
-        nextSteps.push(
-          "5. Auto-render — run: bash " +
-            join(assemblyDir, "build.sh")
+        try {
+          const shell = process.platform === "win32" ? "cmd" : "bash";
+          const flag = process.platform === "win32" ? "/c" : "-c";
+          renderOutput = execFileSync(
+            shell,
+            [flag, `cd ${JSON.stringify(assemblyDir)} && npm install && npm run build`],
+            { encoding: "utf-8", timeout: 20 * 60 * 1000 }
+          );
+          meta.status = "rendered";
+          renderStatus = "rendered";
+        } catch (err) {
+          meta.status = "render_failed";
+          renderStatus = "render_failed";
+          renderOutput = String(err);
+        }
+        await writeFile(
+          join(assemblyDir, "motion-graphics-meta.json"),
+          JSON.stringify(meta, null, 2),
+          "utf-8"
         );
       }
 
@@ -1491,7 +1525,10 @@ export function createMotionGraphicsTool(ctx: ToolContext) {
         totalDuration: `${meta.totalDuration}s`,
         compositionPath: join(srcDir, "Composition.tsx"),
         outputPath: finalOutputPath,
-        status: "created",
+        status: meta.status,
+        renderStatus,
+        renderOutput:
+          renderStatus === "render_failed" ? renderOutput : undefined,
         message: `Motion graphic project created: ${preset} (${meta.totalDuration}s, ${mgProject.scenes.length} scenes)`,
         nextSteps,
       };

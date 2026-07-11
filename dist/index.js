@@ -1823,31 +1823,31 @@ function createVideoEditTool(ctx) {
 function generateRemotionComposition(operation, inputFiles, params, outputFormat) {
   const width = params.width || 1920;
   const height = params.height || 1080;
-  const fps2 = params.fps || 30;
+  const fps = params.fps || 30;
   switch (operation) {
     case "trim":
-      return generateTrimComposition(inputFiles[0], params, width, height, fps2);
+      return generateTrimComposition(inputFiles[0], params, width, height, fps);
     case "concat":
-      return generateConcatComposition(inputFiles, params, width, height, fps2);
+      return generateConcatComposition(inputFiles, params, width, height, fps);
     case "overlay":
-      return generateOverlayComposition(inputFiles, params, width, height, fps2);
+      return generateOverlayComposition(inputFiles, params, width, height, fps);
     case "transition":
-      return generateTransitionComposition(inputFiles, params, width, height, fps2);
+      return generateTransitionComposition(inputFiles, params, width, height, fps);
     case "add-text":
-      return generateTextComposition(inputFiles[0], params, width, height, fps2);
+      return generateTextComposition(inputFiles[0], params, width, height, fps);
     case "add-audio":
-      return generateAudioComposition(inputFiles[0], params, width, height, fps2);
+      return generateAudioComposition(inputFiles[0], params, width, height, fps);
     case "add-effect":
-      return generateEffectComposition(inputFiles[0], params, width, height, fps2);
+      return generateEffectComposition(inputFiles[0], params, width, height, fps);
     case "resize":
-      return generateResizeComposition(inputFiles[0], params, width, height, fps2);
+      return generateResizeComposition(inputFiles[0], params, width, height, fps);
     case "crop":
-      return generateCropComposition(inputFiles[0], params, width, height, fps2);
+      return generateCropComposition(inputFiles[0], params, width, height, fps);
     default:
-      return generateDefaultComposition(inputFiles, width, height, fps2);
+      return generateDefaultComposition(inputFiles, width, height, fps);
   }
 }
-function generateTrimComposition(input, params, width, height, fps2) {
+function generateTrimComposition(input, params, width, height, fps) {
   const startTime = params.startTime || 0;
   const duration = params.duration || 5;
   return `import { Composition, Video, staticFile } from 'remotion';
@@ -1856,8 +1856,8 @@ const TrimmedVideo = () => {
   return (
     <Video
       src={staticFile('${input}')}
-      startFrom={${startTime * fps2}}
-      endAt={${(startTime + duration) * fps2}}
+      startFrom={${startTime * fps}}
+      endAt={${(startTime + duration) * fps}}
       style={{ width: '100%', height: '100%' }}
     />
   );
@@ -1868,8 +1868,8 @@ export const RemotionComposition = () => {
     <Composition
       id="TrimmedVideo"
       component={TrimmedVideo}
-      durationInFrames={${duration * fps2}}
-      fps={${fps2}}
+      durationInFrames={${duration * fps}}
+      fps={${fps}}
       width={${width}}
       height={${height}}
     />
@@ -1877,7 +1877,7 @@ export const RemotionComposition = () => {
 };
 `;
 }
-function generateConcatComposition(inputs, params, width, height, fps2) {
+function generateConcatComposition(inputs, params, width, height, fps) {
   const transitionDuration = params.transitionDuration || 1;
   const totalDuration = inputs.length * 3;
   return `import { Composition, Sequence, Video, staticFile } from 'remotion';
@@ -1893,8 +1893,8 @@ const ConcatenatedVideo = () => {
       {clips.map((clip, index) => (
         <Sequence
           key={index}
-          from={index * ${3 * fps2}}
-          durationInFrames={${3 * fps2}}
+          from={index * ${3 * fps}}
+          durationInFrames={${3 * fps}}
         >
           <Video
             src={staticFile(clip)}
@@ -1911,8 +1911,8 @@ export const RemotionComposition = () => {
     <Composition
       id="ConcatenatedVideo"
       component={ConcatenatedVideo}
-      durationInFrames={${totalDuration * fps2}}
-      fps={${fps2}}
+      durationInFrames={${totalDuration * fps}}
+      fps={${fps}}
       width={${width}}
       height={${height}}
     />
@@ -1920,7 +1920,7 @@ export const RemotionComposition = () => {
 };
 `;
 }
-function generateOverlayComposition(inputs, params, width, height, fps2) {
+function generateOverlayComposition(inputs, params, width, height, fps) {
   const overlayPosition = params.position || "top-right";
   const overlayScale = params.scale || 0.3;
   return `import { Composition, Video, Img, staticFile } from 'remotion';
@@ -1952,8 +1952,8 @@ export const RemotionComposition = () => {
     <Composition
       id="OverlayVideo"
       component={OverlayVideo}
-      durationInFrames={${10 * fps2}}
-      fps={${fps2}}
+      durationInFrames={${10 * fps}}
+      fps={${fps}}
       width={${width}}
       height={${height}}
     />
@@ -1961,20 +1961,20 @@ export const RemotionComposition = () => {
 };
 `;
 }
-function generateTransitionComposition(inputs, params, width, height, fps2) {
+function generateTransitionComposition(inputs, params, width, height, fps) {
   const transitionType = params.transitionType || "fade";
   const transitionDuration = params.transitionDuration || 1;
   return `import { Composition, Sequence, Video, staticFile, interpolate, useCurrentFrame } from 'remotion';
 
 const TransitionVideo = () => {
   const frame = useCurrentFrame();
-  const clipDuration = ${3 * fps2};
-  const transitionFrames = ${transitionDuration * fps2};
+  const clipDuration = ${3 * fps};
+  const transitionFrames = ${transitionDuration * fps};
 
   return (
     <>
       ${inputs.map((input, i) => `
-      <Sequence from={${i * (3 - transitionDuration) * fps2}} durationInFrames={clipDuration}>
+      <Sequence from={${i * (3 - transitionDuration) * fps}} durationInFrames={clipDuration}>
         <Video
           src={staticFile('${input}')}
           style={{
@@ -1999,8 +1999,8 @@ export const RemotionComposition = () => {
     <Composition
       id="TransitionVideo"
       component={TransitionVideo}
-      durationInFrames={${inputs.length * 3 * fps2}}
-      fps={${fps2}}
+      durationInFrames={${inputs.length * 3 * fps}}
+      fps={${fps}}
       width={${width}}
       height={${height}}
     />
@@ -2008,7 +2008,7 @@ export const RemotionComposition = () => {
 };
 `;
 }
-function generateTextComposition(input, params, width, height, fps2) {
+function generateTextComposition(input, params, width, height, fps) {
   const text = params.text || "Your Text Here";
   const fontSize = params.fontSize || 72;
   const color = params.color || "#ffffff";
@@ -2045,8 +2045,8 @@ export const RemotionComposition = () => {
     <Composition
       id="TextOverlayVideo"
       component={TextOverlayVideo}
-      durationInFrames={${10 * fps2}}
-      fps={${fps2}}
+      durationInFrames={${10 * fps}}
+      fps={${fps}}
       width={${width}}
       height={${height}}
     />
@@ -2054,7 +2054,7 @@ export const RemotionComposition = () => {
 };
 `;
 }
-function generateAudioComposition(input, params, width, height, fps2) {
+function generateAudioComposition(input, params, width, height, fps) {
   const audioFile = params.audioFile || "audio.mp3";
   const volume = params.volume || 0.8;
   return `import { Composition, Video, Audio, staticFile } from 'remotion';
@@ -2079,8 +2079,8 @@ export const RemotionComposition = () => {
     <Composition
       id="AudioVideo"
       component={AudioVideo}
-      durationInFrames={${10 * fps2}}
-      fps={${fps2}}
+      durationInFrames={${10 * fps}}
+      fps={${fps}}
       width={${width}}
       height={${height}}
     />
@@ -2088,7 +2088,7 @@ export const RemotionComposition = () => {
 };
 `;
 }
-function generateEffectComposition(input, params, width, height, fps2) {
+function generateEffectComposition(input, params, width, height, fps) {
   const effectType = params.effectType || "blur";
   const intensity = params.intensity || 5;
   return `import { Composition, Video, staticFile, interpolate, useCurrentFrame } from 'remotion';
@@ -2113,8 +2113,8 @@ export const RemotionComposition = () => {
     <Composition
       id="EffectVideo"
       component={EffectVideo}
-      durationInFrames={${10 * fps2}}
-      fps={${fps2}}
+      durationInFrames={${10 * fps}}
+      fps={${fps}}
       width={${width}}
       height={${height}}
     />
@@ -2122,7 +2122,7 @@ export const RemotionComposition = () => {
 };
 `;
 }
-function generateResizeComposition(input, params, width, height, fps2) {
+function generateResizeComposition(input, params, width, height, fps) {
   const newWidth = params.newWidth || 1280;
   const newHeight = params.newHeight || 720;
   return `import { Composition, Video, staticFile } from 'remotion';
@@ -2141,8 +2141,8 @@ export const RemotionComposition = () => {
     <Composition
       id="ResizedVideo"
       component={ResizedVideo}
-      durationInFrames={${10 * fps2}}
-      fps={${fps2}}
+      durationInFrames={${10 * fps}}
+      fps={${fps}}
       width={${newWidth}}
       height={${newHeight}}
     />
@@ -2150,7 +2150,7 @@ export const RemotionComposition = () => {
 };
 `;
 }
-function generateCropComposition(input, params, width, height, fps2) {
+function generateCropComposition(input, params, width, height, fps) {
   const cropX = params.x || 0;
   const cropY = params.y || 0;
   const cropWidth = params.width || width;
@@ -2178,8 +2178,8 @@ export const RemotionComposition = () => {
     <Composition
       id="CroppedVideo"
       component={CroppedVideo}
-      durationInFrames={${10 * fps2}}
-      fps={${fps2}}
+      durationInFrames={${10 * fps}}
+      fps={${fps}}
       width={${cropWidth}}
       height={${cropHeight}}
     />
@@ -2187,7 +2187,7 @@ export const RemotionComposition = () => {
 };
 `;
 }
-function generateDefaultComposition(inputs, width, height, fps2) {
+function generateDefaultComposition(inputs, width, height, fps) {
   return `import { Composition, Video, staticFile } from 'remotion';
 
 const DefaultVideo = () => {
@@ -2204,8 +2204,8 @@ export const RemotionComposition = () => {
     <Composition
       id="DefaultVideo"
       component={DefaultVideo}
-      durationInFrames={${10 * fps2}}
-      fps={${fps2}}
+      durationInFrames={${10 * fps}}
+      fps={${fps}}
       width={${width}}
       height={${height}}
     />
@@ -2396,11 +2396,11 @@ async function discoverMedia(dir) {
   }
   return clips;
 }
-function inferDurationForImage(fps2) {
+function inferDurationForImage(fps) {
   return 3;
 }
 function generateAssemblyPlan(assets, params, style) {
-  const fps2 = params.fps || 30;
+  const fps = params.fps || 30;
   const width = params.width || 1920;
   const height = params.height || 1080;
   const clipDuration = params.clipDuration || 3;
@@ -2413,7 +2413,7 @@ function generateAssemblyPlan(assets, params, style) {
   const orderedClips = [...videos, ...images];
   const segments = [];
   for (const clip of orderedClips) {
-    const duration = clip.type === "image" ? inferDurationForImage(fps2) : clipDuration;
+    const duration = clip.type === "image" ? inferDurationForImage(fps) : clipDuration;
     segments.push({
       clip,
       duration,
@@ -2425,7 +2425,7 @@ function generateAssemblyPlan(assets, params, style) {
   return {
     segments,
     totalDuration,
-    fps: fps2,
+    fps,
     width,
     height,
     backgroundMusic,
@@ -2433,7 +2433,7 @@ function generateAssemblyPlan(assets, params, style) {
   };
 }
 function generateRemotionProject(plan, projectName) {
-  const { segments, fps: fps2, width, height, backgroundMusic } = plan;
+  const { segments, fps, width, height, backgroundMusic } = plan;
   const clipImports = segments.map((seg, i) => {
     const ext = seg.clip.name.split(".").pop();
     const isVideo = ["mp4", "webm", "mov"].includes(ext || "");
@@ -2449,8 +2449,8 @@ function generateRemotionProject(plan, projectName) {
   }).join(`
 `);
   const sequenceBlocks = segments.map((seg, i) => {
-    const frameStart = segments.slice(0, i).reduce((sum, s) => sum + s.duration * fps2, 0);
-    const durationFrames = Math.round(seg.duration * fps2);
+    const frameStart = segments.slice(0, i).reduce((sum, s) => sum + s.duration * fps, 0);
+    const durationFrames = Math.round(seg.duration * fps);
     const ext = seg.clip.name.split(".").pop();
     const isVideo = ["mp4", "webm", "mov"].includes(ext || "");
     return `      <Sequence from={${frameStart}} durationInFrames={${durationFrames}}>
@@ -2463,7 +2463,7 @@ function generateRemotionProject(plan, projectName) {
       </Sequence>`;
   }).join(`
 `);
-  const totalFrames = Math.round(plan.totalDuration * fps2);
+  const totalFrames = Math.round(plan.totalDuration * fps);
   return `import { Composition, Sequence, Audio, staticFile } from 'remotion';
 ${clipImports}
 ${audioImport}
@@ -2513,7 +2513,7 @@ export const RemotionComposition = () => {
       id="${projectName}"
       component={MontageComposition}
       durationInFrames={${totalFrames}}
-      fps={${fps2}}
+      fps={${fps}}
       width={${width}}
       height={${height}}
     />
@@ -2652,7 +2652,7 @@ function createAssemblyTool(ctx) {
         clipDuration,
         transitionType,
         transitionDuration,
-        fps: fps2,
+        fps,
         width,
         height,
         outputPath,
@@ -2691,7 +2691,7 @@ function createAssemblyTool(ctx) {
         });
       }
       const plan = generateAssemblyPlan(orderedAssets, {
-        fps: fps2,
+        fps,
         width,
         height,
         clipDuration,
@@ -3900,6 +3900,10 @@ function createSceneConsistencyTool(ctx) {
 // src/tools/motion-graphics.ts
 import { join as join16 } from "path";
 import { mkdir as mkdir10, writeFile as writeFile8 } from "fs/promises";
+import { execFileSync } from "child_process";
+function jsStr(value) {
+  return JSON.stringify(value ?? "");
+}
 function easingToRemotion(easing) {
   switch (easing) {
     case "easeIn":
@@ -3921,8 +3925,9 @@ function generateElementAnimation(el, elementVar) {
     return "";
   const dur = anim.duration ?? 0.5;
   const delay = anim.delay ?? 0;
-  const easing = easingToRemotion(anim.easing);
   const isSpring = anim.easing === "spring";
+  const easingValue = isSpring ? "spring({ config: { damping: 10, stiffness: 100 } })" : easingToRemotion(anim.easing);
+  const easingOption = `easing: ${easingValue}, `;
   const startFrame = `(${delay} * fps)`;
   const endFrame = `(${delay} + ${dur}) * fps`;
   switch (anim.type) {
@@ -3930,121 +3935,121 @@ function generateElementAnimation(el, elementVar) {
       return `
     // fadeIn ${elementVar}
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, ${el.opacity ?? 1}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, ${el.opacity ?? 1}], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
     case "fadeOut":
       return `
     // fadeOut ${elementVar}
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [${el.opacity ?? 1}, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [${el.opacity ?? 1}, 0], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
     case "slideInLeft":
       return `
     // slideInLeft ${elementVar}
     const ${elementVar}_x = interpolate(
-      frame, ${startFrame}, ${endFrame}, [-100, ${el.x}], ${isSpring ? `{ ...${easing}, extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }` : `{ extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }`}
+      frame, ${startFrame}, ${endFrame}, [-100, ${el.x}], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
     case "slideInRight":
       return `
     // slideInRight ${elementVar}
     const ${elementVar}_x = interpolate(
-      frame, ${startFrame}, ${endFrame}, [110, ${el.x}], ${isSpring ? `{ ...${easing}, extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }` : `{ extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }`}
+      frame, ${startFrame}, ${endFrame}, [110, ${el.x}], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
     case "slideInTop":
       return `
     // slideInTop ${elementVar}
     const ${elementVar}_y = interpolate(
-      frame, ${startFrame}, ${endFrame}, [-100, ${el.y}], ${isSpring ? `{ ...${easing}, extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }` : `{ extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }`}
+      frame, ${startFrame}, ${endFrame}, [-100, ${el.y}], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
     case "slideInBottom":
       return `
     // slideInBottom ${elementVar}
     const ${elementVar}_y = interpolate(
-      frame, ${startFrame}, ${endFrame}, [110, ${el.y}], ${isSpring ? `{ ...${easing}, extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }` : `{ extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }`}
+      frame, ${startFrame}, ${endFrame}, [110, ${el.y}], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
     case "scaleIn":
       return `
     // scaleIn ${elementVar}
     const ${elementVar}_scale = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], ${isSpring ? `{ ...${easing}, extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }` : `{ extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }`}
+      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
     case "scaleOut":
       return `
     // scaleOut ${elementVar}
     const ${elementVar}_scale = interpolate(
-      frame, ${startFrame}, ${endFrame}, [1, 0], ${isSpring ? `{ ...${easing}, extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }` : `{ extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }`}
+      frame, ${startFrame}, ${endFrame}, [1, 0], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [1, 0], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
     case "rotateIn":
       return `
     // rotateIn ${elementVar}
     const ${elementVar}_rotation = interpolate(
-      frame, ${startFrame}, ${endFrame}, [-180, ${el.rotation ?? 0}], ${isSpring ? `{ ...${easing}, extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }` : `{ extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }`}
+      frame, ${startFrame}, ${endFrame}, [-180, ${el.rotation ?? 0}], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
     case "typewriter":
       return `
     // typewriter ${elementVar}
     const ${elementVar}_charCount = Math.floor(
-      interpolate(frame, ${startFrame}, ${endFrame}, [0, ${(el.text || "").length}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+      interpolate(frame, ${startFrame}, ${endFrame}, [0, ${(el.text || "").length}], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
     );`;
     case "bounce":
       return `
     // bounce ${elementVar}
     const ${elementVar}_bounce = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_scale = 1 + Math.sin(${elementVar}_bounce * Math.PI * 3) * 0.1 * (1 - ${elementVar}_bounce);
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
     case "pulse":
       return `
     // pulse ${elementVar}
-    const ${elementVar}_pulse = Math.sin((frame - ${startFrame}) / ${dur * fps} * Math.PI * 2) * 0.5 + 0.5;
+    const ${elementVar}_pulse = Math.sin((frame - ${startFrame}) / ${dur} * fps * Math.PI * 2) * 0.5 + 0.5;
     const ${elementVar}_scale = 1 + ${elementVar}_pulse * 0.05;
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, ${el.opacity ?? 1}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, ${el.opacity ?? 1}], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
     case "blurIn":
       return `
     // blurIn ${elementVar}
     const ${elementVar}_blur = interpolate(
-      frame, ${startFrame}, ${endFrame}, [20, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [20, 0], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
     case "countUp":
       return `
     // countUp ${elementVar}
     const ${elementVar}_count = Math.floor(
-      interpolate(frame, ${startFrame}, ${endFrame}, [0, ${parseInt(el.text || "100", 10) || 100}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+       interpolate(frame, ${startFrame}, ${endFrame}, [0, ${parseInt(jsStr(el.text || "100"), 10) || 100}], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
     );`;
     case "drawLine":
       return `
     // drawLine ${elementVar}
     const ${elementVar}_progress = interpolate(
-      frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      frame, ${startFrame}, ${endFrame}, [0, 1], { ${easingOption}extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
     default:
       return "";
@@ -4061,13 +4066,13 @@ function generateElementStyle(el, elementVar) {
   if (el.height)
     parts.push(`height: '${el.height}%'`);
   if (el.color && el.type !== "line")
-    parts.push(`color: '${el.color}'`);
+    parts.push(`color: ${jsStr(el.color)}`);
   if (el.fontSize)
     parts.push(`fontSize: ${el.fontSize}`);
   if (el.fontWeight)
-    parts.push(`fontWeight: '${el.fontWeight}'`);
+    parts.push(`fontWeight: ${jsStr(el.fontWeight)}`);
   if (el.fontFamily)
-    parts.push(`fontFamily: '${el.fontFamily}'`);
+    parts.push(`fontFamily: ${jsStr(el.fontFamily)}`);
   if (el.borderRadius)
     parts.push(`borderRadius: ${el.borderRadius}`);
   if (el.strokeWidth)
@@ -4115,20 +4120,17 @@ function generateElementStyle(el, elementVar) {
         }`;
 }
 function generateElementJSX(el, index, sceneIndex) {
-  const varName = `el${sceneIndex}_${index}`;
-  const animCode = generateElementAnimation(el, varName);
-  const style = generateElementStyle(el, varName);
   const tag = `el${sceneIndex}_${index}`;
+  const style = generateElementStyle(el, tag);
   let innerJSX = "";
   switch (el.type) {
     case "text": {
-      const textContent = el.text || "Text";
       if (el.animation?.type === "typewriter") {
         innerJSX = `<span>{${tag}_text.slice(0, ${tag}_charCount)}</span>`;
       } else if (el.animation?.type === "countUp") {
         innerJSX = `<span>{${tag}_count}</span>`;
       } else {
-        innerJSX = `<span>${textContent}</span>`;
+        innerJSX = `<span>{${tag}_text}</span>`;
       }
       break;
     }
@@ -4139,39 +4141,35 @@ function generateElementJSX(el, index, sceneIndex) {
       innerJSX = "";
       break;
     case "line": {
-      const lineColor = el.color || "#ffffff";
+      const lineColor = jsStr(el.color || "#ffffff");
       const sw = el.strokeWidth || 2;
       if (el.animation?.type === "drawLine") {
-        innerJSX = `<div style={{ position: 'absolute', left: '${el.x}%', top: '${el.y}%', width: '${el.width || 50}%', height: ${sw}px, background: ${lineColor}, transformOrigin: 'left', transform: 'scaleX(' + ${tag}_progress + ')' }} />`;
-        return animCode + `
-      ` + innerJSX;
+        innerJSX = `<div style={{ position: 'absolute', left: '${el.x}%', top: '${el.y}%', width: '${el.width || 50}%', height: ${sw}, background: ${lineColor}, transformOrigin: 'left', transform: 'scaleX(' + ${tag}_progress + ')' }} />`;
+        return innerJSX;
       }
-      innerJSX = `<div style={{ ...${style}, height: ${sw}px, background: '${lineColor}' }} />`;
-      return animCode + `
-      ` + innerJSX;
+      innerJSX = `<div style={{ ...${style}, height: ${sw}, background: ${lineColor} }} />`;
+      return innerJSX;
     }
     case "image":
       if (!el.src)
         return "";
-      innerJSX = `<img src="${el.src}" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />`;
+      innerJSX = `<img src={${jsStr(el.src)}} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />`;
       break;
   }
   if (el.type === "rect" || el.type === "circle") {
-    const bg = el.color || "#ffffff";
+    const bg = jsStr(el.color || "#ffffff");
     const br = el.type === "circle" ? "borderRadius: '50%'" : el.borderRadius ? `borderRadius: ${el.borderRadius}` : "";
-    const rectStyle = style.replace(/^\{/, `{ ${br ? br + ", " : ""}background: '${bg}',`);
-    return animCode + `
-      <div style={${rectStyle}} />`;
+    const rectStyle = style.replace(/^\{/, `{ ${br ? br + ", " : ""}background: ${bg},`);
+    return `<div style={${rectStyle}} />`;
   }
-  return animCode + `
-      <div style={${style}}>
+  return `<div style={${style}}>
         ${innerJSX}
       </div>`;
 }
-function generateSceneComponent(scene, sceneIndex, fps2) {
+function generateSceneComponent(scene, sceneIndex, fps) {
   const compName = `Scene_${sceneIndex}`;
-  const bg = scene.background || "#000000";
-  const durationFrames = scene.duration * fps2;
+  const bg = jsStr(scene.background || "#000000");
+  const durationFrames = scene.duration * fps;
   const elementBlocks = scene.elements.map((el, i) => generateElementJSX(el, i, sceneIndex)).join(`
 
     `);
@@ -4182,31 +4180,39 @@ function generateSceneComponent(scene, sceneIndex, fps2) {
     return generateElementAnimation(el, varName);
   }).filter(Boolean).join(`
 `);
+  const textVars = scene.elements.map((el, i) => {
+    if (el.type !== "text")
+      return "";
+    const tag = `el${sceneIndex}_${i}`;
+    return `    const ${tag}_text = ${jsStr(el.text || "Text")};`;
+  }).filter(Boolean).join(`
+`);
   return `
   // \u2500\u2500 ${compName} (${scene.duration}s) \u2500\u2500
   const ${compName} = () => {
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();
+${textVars}
 ${animatedVars}
 
     return (
-      <AbsoluteFill style={{ background: '${bg}'${scene.backgroundImage ? `, backgroundImage: 'url(${scene.backgroundImage})', backgroundSize: 'cover'` : ""} }}>
+      <AbsoluteFill style={{ background: ${bg}${scene.backgroundImage ? `, backgroundImage: ${jsStr(`url(${scene.backgroundImage})`)}, backgroundSize: 'cover'` : ""} }}>
     ${elementBlocks}
       </AbsoluteFill>
     );
   };`;
 }
 function generateFullComposition(project) {
-  const { fps: fps2, width, height, scenes } = project;
+  const { fps, width, height, scenes } = project;
   let accumulatedFrames = 0;
   const sceneRanges = [];
   for (const scene of scenes) {
-    const dur = scene.duration * fps2;
+    const dur = scene.duration * fps;
     sceneRanges.push({ from: accumulatedFrames, duration: dur });
     accumulatedFrames += dur;
   }
   const totalFrames = accumulatedFrames;
-  const sceneComponents = scenes.map((s, i) => generateSceneComponent(s, i, fps2)).join(`
+  const sceneComponents = scenes.map((s, i) => generateSceneComponent(s, i, fps)).join(`
 `);
   const sequenceBlocks = scenes.map((s, i) => {
     const range = sceneRanges[i];
@@ -4234,7 +4240,7 @@ ${sequenceBlocks}
         id="MotionGraphic"
         component={MotionGraphic}
         durationInFrames={${totalFrames}}
-        fps={${fps2}}
+        fps={${fps}}
         width={${width}}
         height={${height}}
       />
@@ -4258,7 +4264,7 @@ Config.setOverwriteOutput(true);
 }
 function generatePackageJson2(projectName) {
   return JSON.stringify({
-    name: projectName.toLowerCase().replace(/\s+/g, "-"),
+    name: projectName.toLowerCase().replace(/[^a-z0-9-]/g, "-") || "brandly-motion-graphic",
     version: "1.0.0",
     private: true,
     scripts: {
@@ -4279,7 +4285,7 @@ function generatePackageJson2(projectName) {
     }
   }, null, 2);
 }
-function generateBuildScript2(assemblyDir, outputPath) {
+function generateBuildScript2(outputPath) {
   return `#!/bin/bash
 # Brandly Motion Graphics Build Script
 # Generated: ${new Date().toISOString()}
@@ -4304,11 +4310,11 @@ npx remotion render src/index.ts MotionGraphic "${outputPath}" --codec h264
 echo "\u2705 Build complete: ${outputPath}"
 `;
 }
-function generatePreset(preset, fps2, width, height) {
+function generatePreset(preset, fps, width, height) {
   switch (preset) {
     case "title-reveal":
       return {
-        fps: fps2,
+        fps,
         width,
         height,
         scenes: [
@@ -4382,7 +4388,7 @@ function generatePreset(preset, fps2, width, height) {
       };
     case "product-showcase":
       return {
-        fps: fps2,
+        fps,
         width,
         height,
         scenes: [
@@ -4638,7 +4644,7 @@ function generatePreset(preset, fps2, width, height) {
       };
     case "kinetic-text":
       return {
-        fps: fps2,
+        fps,
         width,
         height,
         scenes: [
@@ -4754,7 +4760,7 @@ function generatePreset(preset, fps2, width, height) {
       };
     case "stats-counter":
       return {
-        fps: fps2,
+        fps,
         width,
         height,
         scenes: [
@@ -4901,7 +4907,7 @@ function generatePreset(preset, fps2, width, height) {
       };
     default:
       return {
-        fps: fps2,
+        fps,
         width,
         height,
         scenes: [
@@ -5083,7 +5089,7 @@ function createMotionGraphicsTool(ctx) {
       if (!project) {
         throw new Error(`Project not found: ${projectID}`);
       }
-      const fps2 = fpsArg || 30;
+      const fps = fpsArg || 30;
       const width = widthArg || 1920;
       const height = heightArg || 1080;
       const projectName = project.name || `brandly-${projectID.slice(0, 8)}`;
@@ -5093,14 +5099,14 @@ function createMotionGraphicsTool(ctx) {
           throw new Error("scenes array is required when using preset='custom'");
         }
         mgProject = {
-          fps: fps2,
+          fps,
           width,
           height,
           scenes,
           style: "custom"
         };
       } else {
-        mgProject = generatePreset(preset, fps2, width, height);
+        mgProject = generatePreset(preset, fps, width, height);
       }
       const compositionCode = generateFullComposition(mgProject);
       const assemblyDir = join16(ctx.directory, "motion-graphics", projectID);
@@ -5113,14 +5119,14 @@ function createMotionGraphicsTool(ctx) {
       await writeFile8(join16(assemblyDir, "remotion.config.ts"), generateRemotionConfig2(), "utf-8");
       await writeFile8(join16(assemblyDir, "package.json"), generatePackageJson2(projectName), "utf-8");
       const finalOutputPath = outputPath || join16(outDir, `motion-graphic-${Date.now()}.mp4`);
-      const buildScript = generateBuildScript2(assemblyDir, finalOutputPath);
+      const buildScript = generateBuildScript2(finalOutputPath);
       await writeFile8(join16(assemblyDir, "build.sh"), buildScript, "utf-8");
       const meta = {
         id: `mg-${Date.now()}`,
         projectId: projectID,
         projectName,
         preset,
-        fps: fps2,
+        fps,
         width,
         height,
         sceneCount: mgProject.scenes.length,
@@ -5164,8 +5170,21 @@ function createMotionGraphicsTool(ctx) {
         `4. Render final video: npm run build`,
         `   Output: ${finalOutputPath}`
       ];
+      let renderStatus;
+      let renderOutput;
       if (autoRender) {
-        nextSteps.push("5. Auto-render \u2014 run: bash " + join16(assemblyDir, "build.sh"));
+        try {
+          const shell = process.platform === "win32" ? "cmd" : "bash";
+          const flag = process.platform === "win32" ? "/c" : "-c";
+          renderOutput = execFileSync(shell, [flag, `cd ${JSON.stringify(assemblyDir)} && npm install && npm run build`], { encoding: "utf-8", timeout: 20 * 60 * 1000 });
+          meta.status = "rendered";
+          renderStatus = "rendered";
+        } catch (err) {
+          meta.status = "render_failed";
+          renderStatus = "render_failed";
+          renderOutput = String(err);
+        }
+        await writeFile8(join16(assemblyDir, "motion-graphics-meta.json"), JSON.stringify(meta, null, 2), "utf-8");
       }
       return {
         projectId: projectID,
@@ -5177,7 +5196,9 @@ function createMotionGraphicsTool(ctx) {
         totalDuration: `${meta.totalDuration}s`,
         compositionPath: join16(srcDir, "Composition.tsx"),
         outputPath: finalOutputPath,
-        status: "created",
+        status: meta.status,
+        renderStatus,
+        renderOutput: renderStatus === "render_failed" ? renderOutput : undefined,
         message: `Motion graphic project created: ${preset} (${meta.totalDuration}s, ${mgProject.scenes.length} scenes)`,
         nextSteps
       };

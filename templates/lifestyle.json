@@ -1,0 +1,48 @@
+{
+  "name": "lifestyle",
+  "description": "Warm aspirational lifestyle integration showing the product in real-world moments",
+  "style": "lifestyle",
+  "duration": {
+    "min": 15,
+    "max": 30,
+    "optimal": 20
+  },
+  "hooks": [
+    "Morning routine moment with product",
+    "Golden hour activity integration",
+    "Social gathering / sharing moment",
+    "Travel adventure with product"
+  ],
+  "narrative": {
+    "structure": "hook → morning → daytime → evening → CTA",
+    "pacing": "natural, flowing, documentary-style",
+    "transitions": "match cuts on action, soft dissolves"
+  },
+  "camera": [
+    "Handheld tracking through environment",
+    "Over-shoulder POV using product",
+    "Wide establishing shot pulling to medium",
+    "Slow motion joy moment",
+    "Natural candid close-up"
+  ],
+  "lighting": [
+    "Golden hour warm side light",
+    "Soft window light interior",
+    "Open shade even outdoor light",
+    "Sunset backlit silhouette"
+  ],
+  "music": {
+    "style": "indie folk, acoustic, or warm lo-fi",
+    "tempo": "85-105 BPM",
+    "mood": "warm, authentic, aspirational"
+  },
+  "models": {
+    "image": ["soul_cinema", "gpt_image_2", "nano_banana_2"],
+    "video": ["seedance_2_0", "kling3_0"]
+  },
+  "platforms": {
+    "tiktok": { "aspect": "9:16", "duration": "15-20s" },
+    "instagram": { "aspect": "9:16 or 1:1", "duration": "20-30s" },
+    "youtube": { "aspect": "16:9", "duration": "20-30s" }
+  }
+}

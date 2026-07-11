@@ -1,0 +1,48 @@
+{
+  "name": "product-showcase",
+  "description": "Clean, minimal studio product demos with razor-sharp focus and pristine backgrounds",
+  "style": "product-showcase",
+  "duration": {
+    "min": 10,
+    "max": 20,
+    "optimal": 15
+  },
+  "hooks": [
+    "Clean product emerge from white void",
+    "Feature callout with crisp typography overlay",
+    "Size comparison with everyday object",
+    "360-degree rotation on translucent background"
+  ],
+  "narrative": {
+    "structure": "hook → key feature 1 → key feature 2 → use case → CTA",
+    "pacing": "medium, confident and precise",
+    "transitions": "fade to white, subtle wipes"
+  },
+  "camera": [
+    "Static eye-level product front",
+    "Slow 360-degree turntable orbit",
+    "Overhead flat lay with guide lines",
+    "Push-in to specific feature detail",
+    "Side profile silhouette reveal"
+  ],
+  "lighting": [
+    "Soft box studio even light",
+    "Top-down key light with fill",
+    "Rim light for edge definition",
+    "Split lighting for dimension"
+  ],
+  "music": {
+    "style": "clean minimal electronic or lo-fi beats",
+    "tempo": "90-110 BPM",
+    "mood": "confident, clear, premium"
+  },
+  "models": {
+    "image": ["gpt_image_2", "nano_banana_pro", "flux_2"],
+    "video": ["kling3_0", "seedance_2_0"]
+  },
+  "platforms": {
+    "tiktok": { "aspect": "9:16", "duration": "10-15s" },
+    "instagram": { "aspect": "1:1", "duration": "15-20s" },
+    "youtube": { "aspect": "16:9", "duration": "15-20s" }
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "name": "luxury",
+  "description": "Ultra-premium high-fashion brand style with opulent visuals and meticulous detail",
+  "style": "luxury",
+  "duration": {
+    "min": 15,
+    "max": 30,
+    "optimal": 20
+  },
+  "hooks": [
+    "Product reveal on marble plinth",
+    "Macro material detail with liquid light",
+    "Architectural environment match",
+    "Shadow and silhouette tease"
+  ],
+  "narrative": {
+    "structure": "teaser → reveal → craftsmanship → heritage moment → CTA",
+    "pacing": "extremely slow, contemplative, breath-like",
+    "transitions": "fade to black, light bloom transitions"
+  },
+  "camera": [
+    "Static hero with slow push-in",
+    "Drone establishing shot pulling back",
+    "Low angle with upward tilt",
+    "Extreme macro texture drift",
+    "Crane shot descending onto product"
+  ],
+  "lighting": [
+    "Single soft key with dark falloff",
+    "Warm candlelight ambiance",
+    "Cool moonlight rim only",
+    "Studio noir single-source dramatic"
+  ],
+  "music": {
+    "style": "ambient orchestral, deep house minimal, or neo-classical",
+    "tempo": "70-95 BPM",
+    "mood": "opulent, mysterious, aspirational"
+  },
+  "models": {
+    "image": ["soul_cinema", "gpt_image_2", "flux_2"],
+    "video": ["seedance_2_0", "runway_gen4"]
+  },
+  "platforms": {
+    "tiktok": { "aspect": "9:16", "duration": "15-20s" },
+    "instagram": { "aspect": "1:1 or 9:16", "duration": "20-30s" },
+    "youtube": { "aspect": "16:9", "duration": "20-30s" }
+  }
+}

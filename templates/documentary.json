@@ -1,0 +1,48 @@
+{
+  "name": "documentary",
+  "description": "Storytelling documentary style with real moments, voiceover, and emotional depth",
+  "style": "documentary",
+  "duration": {
+    "min": 20,
+    "max": 45,
+    "optimal": 30
+  },
+  "hooks": [
+    "Human moment before product enters",
+    "Real problem facing real person",
+    "Behind-the-scenes making-of",
+    "Before/after transformation story"
+  ],
+  "narrative": {
+    "structure": "opening human moment → context → product introduction → impact → reflective CTA",
+    "pacing": "varied, some slow moments, some driving forward",
+    "transitions": "hard cuts on action, dissolve for time passage"
+  },
+  "camera": [
+    "Handheld observational following subject",
+    "Static interview-style B-roll",
+    "Drone establishing environmental context",
+    "Slow push-in during emotional beat",
+    " vérité-style run-and-gun moments"
+  ],
+  "lighting": [
+    "Available light documentary only",
+    "Golden hour natural warmth",
+    "Practical interior practicals",
+    "Overcast sky soft even light"
+  },
+  "music": {
+    "style": "acoustic guitar, ambient pads, or minimalist piano",
+    "tempo": "75-100 BPM",
+    "mood": "authentic, emotional, grounded"
+  },
+  "models": {
+    "image": ["soul_cinema", "flux_2", "nano_banana_pro"],
+    "video": ["seedance_2_0", "runway_gen4"]
+  },
+  "platforms": {
+    "tiktok": { "aspect": "9:16", "duration": "20-30s" },
+    "instagram": { "aspect": "9:16 or 1:1", "duration": "30-45s" },
+    "youtube": { "aspect": "16:9", "duration": "30-45s" }
+  }
+}
