@@ -15,7 +15,44 @@ async function collectArtifacts(dir: string): Promise<string[]> {
     if (entry.isDirectory()) {
       const subFiles = await collectArtifacts(fullPath);
       files.push(...subFiles);
-    } else if (entry.name.endsWith(".md") || entry.name.endsWith(".json")) {
+    } else if (
+      entry.name.endsWith(".md") ||
+      entry.name.endsWith(".json") ||
+      entry.name.endsWith(".png") ||
+      entry.name.endsWith(".jpg") ||
+      entry.name.endsWith(".jpeg") ||
+      entry.name.endsWith(".mp4") ||
+      entry.name.endsWith(".webm") ||
+      entry.name.endsWith(".mp3") ||
+      entry.name.endsWith(".wav")
+    ) {
+      files.push(fullPath);
+    }
+  }
+
+  return files;
+}
+
+async function collectMedia(dir: string): Promise<string[]> {
+  if (!existsSync(dir)) return [];
+
+  const entries = await readdir(dir, { withFileTypes: true });
+  const files: string[] = [];
+
+  for (const entry of entries) {
+    const fullPath = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      const subFiles = await collectMedia(fullPath);
+      files.push(...subFiles);
+    } else if (
+      entry.name.endsWith(".png") ||
+      entry.name.endsWith(".jpg") ||
+      entry.name.endsWith(".jpeg") ||
+      entry.name.endsWith(".mp4") ||
+      entry.name.endsWith(".webm") ||
+      entry.name.endsWith(".mp3") ||
+      entry.name.endsWith(".wav")
+    ) {
       files.push(fullPath);
     }
   }
@@ -65,15 +102,40 @@ export function createExportTool(ctx: ToolContext) {
       const phases = (project.phases as Record<string, any>) || {};
       const artifactFiles: string[] = [];
 
+      // Collect artifacts from each phase
       for (const phase of PHASE_ORDER) {
         const phaseDir = join(artifactsBase, phase);
         const files = await collectArtifacts(phaseDir);
         artifactFiles.push(...files);
       }
 
+      // Copy artifacts to export directory
       for (const src of artifactFiles) {
         const rel = src.replace(artifactsBase, "").replace(/^[/\\]/, "");
         const dest = join(exportDir, rel);
+        const destDir = join(dest, "..");
+        await mkdir(destDir, { recursive: true });
+        await copyFile(src, dest);
+      }
+
+      // Collect and copy media files from imagen, videgen, audgen folders
+      const mediaFolders = ["imagen", "videgen", "audgen"];
+      const mediaFiles: string[] = [];
+
+      for (const folder of mediaFolders) {
+        const mediaDir = join(ctx.directory, folder, projectID as string);
+        const files = await collectMedia(mediaDir);
+        mediaFiles.push(...files);
+      }
+
+      // Copy media files to export directory
+      for (const src of mediaFiles) {
+        // Find which folder this media came from
+        const folderMatch = src.match(/\\(imagen|videgen|audgen)\\/);
+        const folder = folderMatch ? folderMatch[1] : "media";
+        
+        const rel = src.replace(join(ctx.directory, folder), "").replace(/^[/\\]/, "");
+        const dest = join(exportDir, folder, rel);
         const destDir = join(dest, "..");
         await mkdir(destDir, { recursive: true });
         await copyFile(src, dest);
@@ -105,6 +167,13 @@ export function createExportTool(ctx: ToolContext) {
         phases: phaseResults,
         artifacts: artifactFiles.map((f) => f.replace(artifactsBase, "").replace(/^[/\\]/, "")),
         artifactCount: artifactFiles.length,
+        mediaFiles: mediaFiles.map((f) => {
+          const folderMatch = f.match(/\\(imagen|videgen|audgen)\\/);
+          const folder = folderMatch ? folderMatch[1] : "media";
+          return f.replace(join(ctx.directory, folder), "").replace(/^[/\\]/, "");
+        }),
+        mediaCount: mediaFiles.length,
+        totalFiles: artifactFiles.length + mediaFiles.length,
       };
 
       const manifestPath = join(exportDir, "export-manifest.json");
@@ -115,9 +184,12 @@ export function createExportTool(ctx: ToolContext) {
         projectName: project.name,
         exportDir,
         artifactCount: artifactFiles.length,
+        mediaCount: mediaFiles.length,
+        totalFiles: artifactFiles.length + mediaFiles.length,
         manifest: `export-manifest.json`,
         artifacts: manifest.artifacts,
-        message: `Exported ${artifactFiles.length} artifacts to ${exportDir}`,
+        mediaFiles: manifest.mediaFiles,
+        message: `Exported ${artifactFiles.length} artifacts and ${mediaFiles.length} media files to ${exportDir}`,
       };
     },
   };

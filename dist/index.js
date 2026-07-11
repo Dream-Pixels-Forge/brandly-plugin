@@ -2802,6 +2802,1101 @@ function createAssemblyTool(ctx) {
   };
 }
 
+// src/tools/brand-kit.ts
+import { existsSync as existsSync8, mkdirSync, readFileSync as readFileSync3, writeFileSync } from "fs";
+import { join as join12 } from "path";
+var DEFAULT_BRAND_KIT = {
+  name: "Default Brand",
+  colors: {
+    primary: "#000000",
+    secondary: "#FFFFFF",
+    accent: "#FF0000",
+    background: "#000000",
+    text: "#FFFFFF"
+  },
+  fonts: {
+    heading: "Inter",
+    body: "Inter",
+    accent: "Inter"
+  },
+  logo: {
+    url: "",
+    width: 200,
+    height: 60,
+    position: "top-right"
+  },
+  tone: ["professional", "modern"],
+  tagline: "",
+  voiceover: {
+    style: "professional",
+    gender: "neutral",
+    pace: "normal"
+  },
+  music: {
+    genre: "ambient",
+    mood: "upbeat",
+    tempo: "medium"
+  }
+};
+function createBrandKitTool(ctx) {
+  return {
+    name: "brandly_brand_kit",
+    description: "Manage brand kits \u2014 store colors, fonts, logo, tone of voice, voiceover style, and music preferences. Apply a brand kit to a project to auto-apply consistent branding across all generated assets.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: {
+          type: "string",
+          enum: ["create", "get", "update", "delete", "list", "apply"],
+          description: "Action to perform"
+        },
+        brandKitId: {
+          type: "string",
+          description: "Brand kit ID (required for get/update/delete/apply)"
+        },
+        projectID: {
+          type: "string",
+          description: "Project ID to apply brand kit to (required for apply)"
+        },
+        name: {
+          type: "string",
+          description: "Brand kit name"
+        },
+        colors: {
+          type: "object",
+          properties: {
+            primary: { type: "string" },
+            secondary: { type: "string" },
+            accent: { type: "string" },
+            background: { type: "string" },
+            text: { type: "string" }
+          },
+          description: "Brand colors (hex values)"
+        },
+        fonts: {
+          type: "object",
+          properties: {
+            heading: { type: "string" },
+            body: { type: "string" },
+            accent: { type: "string" }
+          },
+          description: "Font families"
+        },
+        logo: {
+          type: "object",
+          properties: {
+            url: { type: "string" },
+            width: { type: "number" },
+            height: { type: "number" },
+            position: {
+              type: "string",
+              enum: ["top-left", "top-right", "bottom-left", "bottom-right", "center"]
+            }
+          },
+          description: "Logo configuration"
+        },
+        tone: {
+          type: "array",
+          items: { type: "string" },
+          description: "Brand tone keywords (e.g. professional, playful, luxury)"
+        },
+        tagline: {
+          type: "string",
+          description: "Brand tagline"
+        },
+        voiceover: {
+          type: "object",
+          properties: {
+            style: { type: "string" },
+            gender: { type: "string" },
+            pace: { type: "string", enum: ["slow", "normal", "fast"] }
+          },
+          description: "Voiceover preferences"
+        },
+        music: {
+          type: "object",
+          properties: {
+            genre: { type: "string" },
+            mood: { type: "string" },
+            tempo: { type: "string", enum: ["slow", "medium", "fast"] }
+          },
+          description: "Music preferences"
+        }
+      },
+      required: ["action"]
+    },
+    execute: async (input) => {
+      const brandKitsDir = join12(ctx.directory, ".brandly", "brand-kits");
+      mkdirSync(brandKitsDir, { recursive: true });
+      const getKitPath = (id) => join12(brandKitsDir, `${id}.json`);
+      switch (input.action) {
+        case "create": {
+          const id = `bk-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+          const kit = {
+            name: input.name || "Untitled Brand",
+            colors: { ...DEFAULT_BRAND_KIT.colors, ...input.colors },
+            fonts: { ...DEFAULT_BRAND_KIT.fonts, ...input.fonts },
+            logo: { ...DEFAULT_BRAND_KIT.logo, ...input.logo },
+            tone: input.tone || DEFAULT_BRAND_KIT.tone,
+            tagline: input.tagline || DEFAULT_BRAND_KIT.tagline,
+            voiceover: { ...DEFAULT_BRAND_KIT.voiceover, ...input.voiceover },
+            music: { ...DEFAULT_BRAND_KIT.music, ...input.music }
+          };
+          writeFileSync(getKitPath(id), JSON.stringify(kit, null, 2));
+          return { id, ...kit, message: "Brand kit created" };
+        }
+        case "get": {
+          if (!input.brandKitId)
+            throw new Error("brandKitId required");
+          const path = getKitPath(input.brandKitId);
+          if (!existsSync8(path))
+            throw new Error("Brand kit not found");
+          return JSON.parse(readFileSync3(path, "utf-8"));
+        }
+        case "update": {
+          if (!input.brandKitId)
+            throw new Error("brandKitId required");
+          const path = getKitPath(input.brandKitId);
+          if (!existsSync8(path))
+            throw new Error("Brand kit not found");
+          const existing = JSON.parse(readFileSync3(path, "utf-8"));
+          const updated = {
+            ...existing,
+            ...input.name && { name: input.name },
+            ...input.colors && { colors: { ...existing.colors, ...input.colors } },
+            ...input.fonts && { fonts: { ...existing.fonts, ...input.fonts } },
+            ...input.logo && { logo: { ...existing.logo, ...input.logo } },
+            ...input.tone && { tone: input.tone },
+            ...input.tagline !== undefined && { tagline: input.tagline },
+            ...input.voiceover && { voiceover: { ...existing.voiceover, ...input.voiceover } },
+            ...input.music && { music: { ...existing.music, ...input.music } }
+          };
+          writeFileSync(path, JSON.stringify(updated, null, 2));
+          return { id: input.brandKitId, ...updated, message: "Brand kit updated" };
+        }
+        case "delete": {
+          if (!input.brandKitId)
+            throw new Error("brandKitId required");
+          const path = getKitPath(input.brandKitId);
+          if (!existsSync8(path))
+            throw new Error("Brand kit not found");
+          const { rmSync } = await import("fs");
+          rmSync(path);
+          return { deleted: input.brandKitId };
+        }
+        case "list": {
+          const { readdirSync: readdirSync3 } = await import("fs");
+          if (!existsSync8(brandKitsDir))
+            return { kits: [] };
+          const files = readdirSync3(brandKitsDir).filter((f) => f.endsWith(".json"));
+          const kits = files.map((f) => {
+            const id = f.replace(".json", "");
+            const kit = JSON.parse(readFileSync3(join12(brandKitsDir, f), "utf-8"));
+            return { id, name: kit.name };
+          });
+          return { kits };
+        }
+        case "apply": {
+          if (!input.brandKitId)
+            throw new Error("brandKitId required");
+          if (!input.projectID)
+            throw new Error("projectID required");
+          const kitPath = getKitPath(input.brandKitId);
+          if (!existsSync8(kitPath))
+            throw new Error("Brand kit not found");
+          const kit = JSON.parse(readFileSync3(kitPath, "utf-8"));
+          const projectDir = join12(ctx.directory, ".brandly", "projects", input.projectID);
+          if (!existsSync8(projectDir))
+            throw new Error("Project not found");
+          const projectPath = join12(projectDir, "project.json");
+          const project = JSON.parse(readFileSync3(projectPath, "utf-8"));
+          project.brandKit = {
+            id: input.brandKitId,
+            ...kit
+          };
+          writeFileSync(projectPath, JSON.stringify(project, null, 2));
+          return {
+            applied: input.brandKitId,
+            projectID: input.projectID,
+            brand: kit.name,
+            message: `Brand kit "${kit.name}" applied to project`
+          };
+        }
+        default:
+          throw new Error(`Unknown action: ${input.action}`);
+      }
+    }
+  };
+}
+
+// src/tools/batch-variations.ts
+import { existsSync as existsSync9, mkdirSync as mkdirSync2, readFileSync as readFileSync4, writeFileSync as writeFileSync2 } from "fs";
+import { join as join13 } from "path";
+var HOOKS = [
+  "Problem-first: Show the pain point immediately",
+  "Product-reveal: Dramatic unveil of the product",
+  "Social-proof: Start with testimonial or stats",
+  "Lifestyle: Show the aspirational life with product",
+  "Before-after: Transform from problem to solution",
+  "Behind-the-scenes: Show how it's made",
+  "Challenge: Pose a question or challenge",
+  "Urgency: Limited time or scarcity angle"
+];
+var CTAS = [
+  "Shop now \u2014 link in bio",
+  "Try it free today",
+  "Join the waitlist",
+  "Get 20% off with code LAUNCH",
+  "See it in action",
+  "Order yours now",
+  "Learn more at brand.com",
+  "Start your free trial"
+];
+var TONES = [
+  ["professional", "modern", "clean"],
+  ["playful", "energetic", "bold"],
+  ["luxury", "elegant", "premium"],
+  ["minimal", "calm", "sophisticated"],
+  ["edgy", "urban", "raw"],
+  ["warm", "friendly", "approachable"],
+  ["dramatic", "cinematic", "epic"],
+  ["funny", "quirky", "lighthearted"]
+];
+function generateVariationId() {
+  return `var-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+function createBatchVariationsTool(ctx) {
+  return {
+    name: "brandly_batch_variations",
+    description: "Generate multiple variations of a video concept with different hooks, styles, CTAs, and tones. Create N variations from one idea, each as a separate project, then compare and pick the best.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        projectID: {
+          type: "string",
+          description: "Source project ID to create variations from"
+        },
+        variations: {
+          type: "number",
+          description: "Number of variations to generate (1-10, default 3)"
+        },
+        autoGenerate: {
+          type: "boolean",
+          description: "Auto-generate variation configs or use manual ones"
+        },
+        customVariations: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              style: { type: "string" },
+              hook: { type: "string" },
+              cta: { type: "string" },
+              shotCount: { type: "number" },
+              tone: { type: "array", items: { type: "string" } },
+              musicMood: { type: "string" },
+              voiceoverStyle: { type: "string" }
+            }
+          },
+          description: "Manual variation configs (overrides autoGenerate)"
+        }
+      },
+      required: ["projectID"]
+    },
+    execute: async (input) => {
+      const { projectID, customVariations } = input;
+      const count = Math.min(10, Math.max(1, input.variations || 3));
+      const sourceDir = join13(ctx.directory, ".brandly", "projects", projectID);
+      if (!existsSync9(sourceDir)) {
+        throw new Error(`Project ${projectID} not found`);
+      }
+      const sourceProject = JSON.parse(readFileSync4(join13(sourceDir, "project.json"), "utf-8"));
+      let configs = [];
+      if (customVariations && customVariations.length > 0) {
+        configs = customVariations.map((v, i) => ({
+          id: generateVariationId(),
+          name: v.name || `Variation ${i + 1}`,
+          style: v.style || sourceProject.style || "cinematic",
+          hook: v.hook || HOOKS[i % HOOKS.length],
+          cta: v.cta || CTAS[i % CTAS.length],
+          shotCount: v.shotCount || sourceProject.shotCount || 5,
+          duration: sourceProject.duration || 15,
+          tone: v.tone || TONES[i % TONES.length],
+          musicMood: v.musicMood || "upbeat",
+          voiceoverStyle: v.voiceoverStyle || "professional"
+        }));
+      } else {
+        const usedStyles = new Set;
+        const usedHooks = new Set;
+        const usedTones = new Set;
+        for (let i = 0;i < count; i++) {
+          const styleKeys = Object.keys(VIDEO_STYLES);
+          let style;
+          do {
+            style = styleKeys[Math.floor(Math.random() * styleKeys.length)];
+          } while (usedStyles.has(style) && usedStyles.size < styleKeys.length);
+          usedStyles.add(style);
+          let hookIdx;
+          do {
+            hookIdx = Math.floor(Math.random() * HOOKS.length);
+          } while (usedHooks.has(hookIdx) && usedHooks.size < HOOKS.length);
+          usedHooks.add(hookIdx);
+          let toneIdx;
+          do {
+            toneIdx = Math.floor(Math.random() * TONES.length);
+          } while (usedTones.has(toneIdx) && usedTones.size < TONES.length);
+          usedTones.add(toneIdx);
+          configs.push({
+            id: generateVariationId(),
+            name: `${sourceProject.name || "Variation"} \u2014 ${style} ${i + 1}`,
+            style,
+            hook: HOOKS[hookIdx],
+            cta: CTAS[i % CTAS.length],
+            shotCount: sourceProject.shotCount || 5,
+            duration: sourceProject.duration || 15,
+            tone: TONES[toneIdx],
+            musicMood: ["upbeat", "dramatic", "chill", "epic", "playful"][i % 5],
+            voiceoverStyle: ["professional", "energetic", "calm", "bold", "warm"][i % 5]
+          });
+        }
+      }
+      const variationsDir = join13(ctx.directory, "variations", projectID);
+      mkdirSync2(variationsDir, { recursive: true });
+      const createdVariations = [];
+      for (const config of configs) {
+        const varDir = join13(variationsDir, config.id);
+        mkdirSync2(varDir, { recursive: true });
+        const variationProject = {
+          id: config.id,
+          name: config.name,
+          idea: sourceProject.idea,
+          productName: sourceProject.productName,
+          style: config.style,
+          shotCount: config.shotCount,
+          duration: config.duration,
+          currentPhase: "init",
+          status: "created",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          phases: {},
+          metadata: {
+            ...sourceProject.metadata,
+            variation: {
+              parentProjectId: projectID,
+              hook: config.hook,
+              cta: config.cta,
+              tone: config.tone,
+              musicMood: config.musicMood,
+              voiceoverStyle: config.voiceoverStyle
+            }
+          }
+        };
+        writeFileSync2(join13(varDir, "project.json"), JSON.stringify(variationProject, null, 2));
+        createdVariations.push({
+          id: config.id,
+          name: config.name,
+          style: config.style,
+          hook: config.hook,
+          cta: config.cta,
+          tone: config.tone,
+          path: varDir
+        });
+      }
+      const sourceProjectPath = join13(sourceDir, "project.json");
+      sourceProject.metadata = sourceProject.metadata || {};
+      sourceProject.metadata.variations = configs.map((c) => ({
+        id: c.id,
+        name: c.name
+      }));
+      writeFileSync2(sourceProjectPath, JSON.stringify(sourceProject, null, 2));
+      return {
+        sourceProjectID: projectID,
+        variationsCount: createdVariations.length,
+        variations: createdVariations,
+        message: `Created ${createdVariations.length} variations in ${variationsDir}`
+      };
+    }
+  };
+}
+
+// src/tools/auto-caption.ts
+import { existsSync as existsSync10, mkdirSync as mkdirSync3, writeFileSync as writeFileSync3 } from "fs";
+import { join as join14 } from "path";
+var DEFAULT_STYLE = {
+  fontFamily: "Inter",
+  fontSize: 48,
+  fontColor: "#FFFFFF",
+  backgroundColor: "#000000",
+  backgroundOpacity: 0.7,
+  position: "bottom",
+  alignment: "center",
+  maxWidth: 80,
+  padding: 12,
+  borderRadius: 8,
+  wordHighlight: true,
+  highlightColor: "#FFD700",
+  animation: "pop"
+};
+var CAPTION_PRESETS = {
+  tiktok: {
+    fontFamily: "Impact",
+    fontSize: 56,
+    fontColor: "#FFFFFF",
+    backgroundColor: "#000000",
+    backgroundOpacity: 0,
+    position: "center",
+    wordHighlight: true,
+    highlightColor: "#00FF00",
+    animation: "pop"
+  },
+  youtube: {
+    fontFamily: "Roboto",
+    fontSize: 42,
+    fontColor: "#FFFFFF",
+    backgroundColor: "#000000",
+    backgroundOpacity: 0.8,
+    position: "bottom",
+    wordHighlight: false,
+    animation: "fade"
+  },
+  cinematic: {
+    fontFamily: "Playfair Display",
+    fontSize: 36,
+    fontColor: "#F5F5F5",
+    backgroundColor: "#000000",
+    backgroundOpacity: 0.5,
+    position: "bottom",
+    wordHighlight: false,
+    animation: "typewriter"
+  },
+  minimal: {
+    fontFamily: "Inter",
+    fontSize: 32,
+    fontColor: "#FFFFFF",
+    backgroundColor: "#000000",
+    backgroundOpacity: 0,
+    position: "bottom",
+    wordHighlight: false,
+    animation: "none"
+  },
+  bold: {
+    fontFamily: "Montserrat",
+    fontSize: 64,
+    fontColor: "#FFFFFF",
+    backgroundColor: "#FF0000",
+    backgroundOpacity: 0.9,
+    position: "center",
+    wordHighlight: true,
+    highlightColor: "#FFD700",
+    animation: "pop"
+  }
+};
+function generateCaptionSrt(segments) {
+  let srt = "";
+  segments.forEach((seg, idx) => {
+    const startTime = formatSrtTime(seg.start);
+    const endTime = formatSrtTime(seg.end);
+    srt += `${idx + 1}
+${startTime} --> ${endTime}
+${seg.text}
+
+`;
+  });
+  return srt;
+}
+function formatSrtTime(ms) {
+  const hours = Math.floor(ms / 3600000);
+  const minutes = Math.floor(ms % 3600000 / 60000);
+  const seconds = Math.floor(ms % 60000 / 1000);
+  const millis = ms % 1000;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")},${String(millis).padStart(3, "0")}`;
+}
+function generateCaptionComponent(style) {
+  return `import React from "react";
+import {
+  AbsoluteFill,
+  useCurrentFrame,
+  useVideoConfig,
+  interpolate,
+  Easing,
+} from "remotion";
+
+interface Caption {
+  text: string;
+  start: number;
+  end: number;
+  words: { word: string; start: number; end: number }[];
+}
+
+interface AutoCaptionProps {
+  captions: Caption[];
+  style?: Partial<CaptionStyle>;
+}
+
+const DEFAULT_STYLE: CaptionStyle = ${JSON.stringify(style, null, 2)};
+
+export const AutoCaption: React.FC<AutoCaptionProps> = ({
+  captions,
+  style: userStyle,
+}) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const s = { ...DEFAULT_STYLE, ...userStyle };
+  const currentTime = (frame / fps) * 1000;
+
+  const activeSegment = captions.find(
+    (c) => currentTime >= c.start && currentTime <= c.end
+  );
+
+  if (!activeSegment) return null;
+
+  const segmentProgress = interpolate(
+    currentTime,
+    [activeSegment.start, activeSegment.end],
+    [0, 1],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+  );
+
+  const getWordStyle = (wordIdx: number): React.CSSProperties => {
+    const word = activeSegment.words[wordIdx];
+    if (!word) return {};
+
+    const isActive = currentTime >= word.start && currentTime <= word.end;
+    const isPast = currentTime > word.end;
+
+    const baseStyle: React.CSSProperties = {
+      transition: "all 0.15s ease",
+      opacity: isPast ? 0.5 : 1,
+    };
+
+    if (s.wordHighlight && isActive) {
+      return {
+        ...baseStyle,
+        color: s.highlightColor,
+        transform: "scale(1.1)",
+        fontWeight: "bold",
+      };
+    }
+
+    return baseStyle;
+  };
+
+  const getContainerStyle = (): React.CSSProperties => {
+    const positionStyles: Record<string, React.CSSProperties> = {
+      top: { top: "10%", justifyContent: "flex-start" },
+      center: { top: "50%", transform: "translateY(-50%)", justifyContent: "center" },
+      bottom: { bottom: "10%", justifyContent: "flex-end" },
+    };
+
+    return {
+      position: "absolute",
+      left: "50%",
+      transform: s.position === "center" ? "translate(-50%, -50%)" : "translateX(-50%)",
+      width: \`\${s.maxWidth}%\`,
+      textAlign: s.alignment,
+      padding: s.padding,
+      borderRadius: s.borderRadius,
+      backgroundColor:
+        s.backgroundColor + Math.round(s.backgroundOpacity * 255)
+          .toString(16)
+          .padStart(2, "0"),
+      fontFamily: s.fontFamily,
+      fontSize: s.fontSize,
+      color: s.fontColor,
+      lineHeight: 1.3,
+      ...positionStyles[s.position],
+    };
+  };
+
+  const getAnimationStyle = (): React.CSSProperties => {
+    switch (s.animation) {
+      case "fade":
+        return {
+          opacity: interpolate(segmentProgress, [0, 0.1, 0.9, 1], [0, 1, 1, 0], {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          }),
+        };
+      case "pop":
+        return {
+          transform: \`scale(\${interpolate(
+            segmentProgress,
+            [0, 0.1, 0.9, 1],
+            [0.8, 1, 1, 0.8],
+            { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+          )})\`,
+        };
+      case "typewriter":
+        return {
+          clipPath: \`inset(0 \${(1 - segmentProgress) * 100}% 0 0)\`,
+        };
+      default:
+        return {};
+    }
+  };
+
+  return (
+    <AbsoluteFill>
+      <div style={{ ...getContainerStyle(), ...getAnimationStyle() }}>
+        {activeSegment.words.map((w, i) => (
+          <span key={i} style={getWordStyle(i)}>
+            {w.word}{" "}
+          </span>
+        ))}
+      </div>
+    </AbsoluteFill>
+  );
+};
+`;
+}
+function generateCaptionEntry(captions, style) {
+  return `import { Composition } from "remotion";
+import { AutoCaption } from "./AutoCaption";
+
+const captions = ${JSON.stringify(captions, null, 2)};
+
+export const RemotionRoot: React.FC = () => {
+  return (
+    <Composition
+      id="AutoCaption"
+      component={AutoCaption}
+      durationInFrames={30 * 60}
+      fps={30}
+      width={1080}
+      height={1920}
+      defaultProps={{
+        captions,
+      }}
+    />
+  );
+};
+`;
+}
+function createAutoCaptionTool(ctx) {
+  return {
+    name: "brandly_auto_caption",
+    description: "Generate word-level captions/subtitles from voiceover audio. Outputs SRT file and a Remotion component that can be overlaid on the final video with word-level highlighting and animations.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        projectID: {
+          type: "string",
+          description: "Project ID"
+        },
+        audioPath: {
+          type: "string",
+          description: "Path to voiceover audio file (relative to project directory)"
+        },
+        captions: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              text: { type: "string" },
+              start: { type: "number" },
+              end: { type: "number" },
+              words: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    word: { type: "string" },
+                    start: { type: "number" },
+                    end: { type: "number" }
+                  }
+                }
+              }
+            }
+          },
+          description: "Pre-generated caption segments (if available). If not provided, generates placeholder captions."
+        },
+        style: {
+          type: "string",
+          enum: ["tiktok", "youtube", "cinematic", "minimal", "bold", "custom"],
+          description: "Caption style preset"
+        },
+        customStyle: {
+          type: "object",
+          properties: {
+            fontFamily: { type: "string" },
+            fontSize: { type: "number" },
+            fontColor: { type: "string" },
+            backgroundColor: { type: "string" },
+            backgroundOpacity: { type: "number" },
+            position: { type: "string", enum: ["top", "center", "bottom"] },
+            alignment: { type: "string", enum: ["left", "center", "right"] },
+            maxWidth: { type: "number" },
+            wordHighlight: { type: "boolean" },
+            highlightColor: { type: "string" },
+            animation: { type: "string", enum: ["none", "fade", "pop", "typewriter"] }
+          },
+          description: "Custom caption style (overrides preset)"
+        },
+        exportSrt: {
+          type: "boolean",
+          description: "Export SRT subtitle file"
+        }
+      },
+      required: ["projectID"]
+    },
+    execute: async (input) => {
+      const { projectID, audioPath, customStyle, exportSrt } = input;
+      const projectDir = join14(ctx.directory, ".brandly", "projects", projectID);
+      if (!existsSync10(projectDir)) {
+        throw new Error(`Project ${projectID} not found`);
+      }
+      const presetName = input.style || "tiktok";
+      const preset = CAPTION_PRESETS[presetName] || CAPTION_PRESETS.tiktok;
+      const captionStyle = { ...DEFAULT_STYLE, ...preset, ...customStyle };
+      let captions = input.captions || [
+        {
+          text: "Replace with actual transcribed captions",
+          start: 0,
+          end: 3000,
+          words: [
+            { word: "Replace", start: 0, end: 500 },
+            { word: "with", start: 500, end: 800 },
+            { word: "actual", start: 800, end: 1200 },
+            { word: "transcribed", start: 1200, end: 2000 },
+            { word: "captions", start: 2000, end: 3000 }
+          ]
+        }
+      ];
+      const captionsDir = join14(ctx.directory, "captions", projectID);
+      mkdirSync3(captionsDir, { recursive: true });
+      writeFileSync3(join14(captionsDir, "captions.json"), JSON.stringify({ captions, style: captionStyle }, null, 2));
+      if (exportSrt !== false) {
+        const srt = generateCaptionSrt(captions);
+        writeFileSync3(join14(captionsDir, "captions.srt"), srt);
+      }
+      mkdirSync3(join14(captionsDir, "src"), { recursive: true });
+      writeFileSync3(join14(captionsDir, "src", "AutoCaption.tsx"), generateCaptionComponent(captionStyle));
+      writeFileSync3(join14(captionsDir, "src", "Root.tsx"), generateCaptionEntry(captions, captionStyle));
+      writeFileSync3(join14(captionsDir, "src", "index.ts"), `import { registerRoot } from "remotion";
+import { RemotionRoot } from "./Root";
+registerRoot(RemotionRoot);
+`);
+      writeFileSync3(join14(captionsDir, "package.json"), JSON.stringify({
+        name: `brandly-captions-${projectID}`,
+        version: "1.0.0",
+        private: true,
+        scripts: {
+          studio: "remotion studio",
+          render: "remotion render"
+        },
+        dependencies: {
+          "@remotion/cli": "4.0.0",
+          react: "^18.2.0",
+          "react-dom": "^18.2.0",
+          remotion: "4.0.0"
+        },
+        devDependencies: {
+          "@types/react": "^18.2.0",
+          typescript: "^5.3.0"
+        }
+      }, null, 2));
+      return {
+        projectID,
+        captionStyle,
+        captionsCount: captions.length,
+        totalDuration: captions.length > 0 ? captions[captions.length - 1].end : 0,
+        files: {
+          captionsJson: join14(captionsDir, "captions.json"),
+          srt: exportSrt !== false ? join14(captionsDir, "captions.srt") : null,
+          component: join14(captionsDir, "src", "AutoCaption.tsx")
+        },
+        message: `Generated ${captions.length} caption segments. Remotion component ready in ${captionsDir}`
+      };
+    }
+  };
+}
+
+// src/tools/scene-consistency.ts
+import { existsSync as existsSync11, mkdirSync as mkdirSync4, readFileSync as readFileSync6, writeFileSync as writeFileSync4 } from "fs";
+import { join as join15 } from "path";
+function generateCharacterId() {
+  return `char-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+function createSceneConsistencyTool(ctx) {
+  return {
+    name: "brandly_scene_consistency",
+    description: "Lock character and product references across multiple shots for visual consistency. Define characters/products, assign them to scenes, and generate prompts that maintain consistent appearance throughout the video.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: {
+          type: "string",
+          enum: [
+            "create_character",
+            "update_character",
+            "list_characters",
+            "delete_character",
+            "assign_to_scene",
+            "remove_from_scene",
+            "get_scene_plan",
+            "generate_consistent_prompt",
+            "set_rules"
+          ],
+          description: "Action to perform"
+        },
+        projectID: {
+          type: "string",
+          description: "Project ID"
+        },
+        characterId: {
+          type: "string",
+          description: "Character ID (required for update/delete/assign/remove)"
+        },
+        name: {
+          type: "string",
+          description: "Character name"
+        },
+        type: {
+          type: "string",
+          enum: ["person", "product", "object", "animal", "custom"],
+          description: "Character type"
+        },
+        description: {
+          type: "string",
+          description: "Character description for prompt generation"
+        },
+        referenceImages: {
+          type: "array",
+          items: { type: "string" },
+          description: "Paths to reference images"
+        },
+        attributes: {
+          type: "object",
+          properties: {
+            appearance: { type: "string" },
+            clothing: { type: "string" },
+            colors: { type: "array", items: { type: "string" } },
+            style: { type: "string" },
+            brand: { type: "string" },
+            features: { type: "array", items: { type: "string" } }
+          }
+        },
+        sceneIndex: {
+          type: "number",
+          description: "Scene index (0-based)"
+        },
+        role: {
+          type: "string",
+          enum: ["primary", "secondary", "background"],
+          description: "Character role in the scene"
+        },
+        action_description: {
+          type: "string",
+          description: "What the character is doing in the scene"
+        },
+        position: {
+          type: "string",
+          description: "Position in the frame (e.g. left third, center, right third)"
+        },
+        notes: {
+          type: "string",
+          description: "Additional notes for this scene assignment"
+        },
+        basePrompt: {
+          type: "string",
+          description: "Base prompt to enhance with consistency references"
+        },
+        sceneCount: {
+          type: "number",
+          description: "Number of scenes for prompt generation"
+        },
+        rules: {
+          type: "object",
+          properties: {
+            maintainAppearance: { type: "boolean" },
+            lockColors: { type: "boolean" },
+            lockClothing: { type: "boolean" },
+            referenceStrength: { type: "string", enum: ["strict", "moderate", "loose"] }
+          }
+        }
+      },
+      required: ["action", "projectID"]
+    },
+    execute: async (input) => {
+      const { action, projectID } = input;
+      const projectDir = join15(ctx.directory, ".brandly", "projects", projectID);
+      if (!existsSync11(projectDir)) {
+        throw new Error(`Project ${projectID} not found`);
+      }
+      const consistencyDir = join15(ctx.directory, "consistency", projectID);
+      mkdirSync4(consistencyDir, { recursive: true });
+      const planPath = join15(consistencyDir, "plan.json");
+      let plan;
+      if (existsSync11(planPath)) {
+        plan = JSON.parse(readFileSync6(planPath, "utf-8"));
+      } else {
+        plan = {
+          characters: [],
+          assignments: [],
+          rules: {
+            maintainAppearance: true,
+            lockColors: true,
+            lockClothing: true,
+            referenceStrength: "moderate"
+          }
+        };
+      }
+      const savePlan = () => {
+        writeFileSync4(planPath, JSON.stringify(plan, null, 2));
+      };
+      switch (action) {
+        case "create_character": {
+          const id = generateCharacterId();
+          const character = {
+            id,
+            name: input.name || "Unnamed Character",
+            type: input.type || "person",
+            description: input.description || "",
+            referenceImages: input.referenceImages || [],
+            attributes: input.attributes || {},
+            usageCount: 0
+          };
+          plan.characters.push(character);
+          savePlan();
+          return { id, ...character, message: "Character created" };
+        }
+        case "update_character": {
+          if (!input.characterId)
+            throw new Error("characterId required");
+          const char = plan.characters.find((c) => c.id === input.characterId);
+          if (!char)
+            throw new Error("Character not found");
+          if (input.name)
+            char.name = input.name;
+          if (input.type)
+            char.type = input.type;
+          if (input.description)
+            char.description = input.description;
+          if (input.referenceImages)
+            char.referenceImages = input.referenceImages;
+          if (input.attributes) {
+            char.attributes = { ...char.attributes, ...input.attributes };
+          }
+          savePlan();
+          return { id: char.id, ...char, message: "Character updated" };
+        }
+        case "list_characters": {
+          return { characters: plan.characters };
+        }
+        case "delete_character": {
+          if (!input.characterId)
+            throw new Error("characterId required");
+          plan.characters = plan.characters.filter((c) => c.id !== input.characterId);
+          plan.assignments = plan.assignments.filter((a) => a.characterId !== input.characterId);
+          savePlan();
+          return { deleted: input.characterId };
+        }
+        case "assign_to_scene": {
+          if (!input.characterId)
+            throw new Error("characterId required");
+          if (input.sceneIndex === undefined)
+            throw new Error("sceneIndex required");
+          const char = plan.characters.find((c) => c.id === input.characterId);
+          if (!char)
+            throw new Error("Character not found");
+          plan.assignments = plan.assignments.filter((a) => !(a.sceneIndex === input.sceneIndex && a.characterId === input.characterId));
+          const assignment = {
+            sceneIndex: input.sceneIndex,
+            characterId: input.characterId,
+            role: input.role || "primary",
+            action: input.action_description || "",
+            position: input.position || "center",
+            notes: input.notes || ""
+          };
+          plan.assignments.push(assignment);
+          char.usageCount++;
+          char.lastUsed = new Date().toISOString();
+          savePlan();
+          return { assignment, character: char.name, message: `Assigned to scene ${input.sceneIndex}` };
+        }
+        case "remove_from_scene": {
+          if (!input.characterId)
+            throw new Error("characterId required");
+          if (input.sceneIndex === undefined)
+            throw new Error("sceneIndex required");
+          plan.assignments = plan.assignments.filter((a) => !(a.sceneIndex === input.sceneIndex && a.characterId === input.characterId));
+          savePlan();
+          return { removed: input.characterId, scene: input.sceneIndex };
+        }
+        case "get_scene_plan": {
+          const scenes = plan.assignments.reduce((acc, a) => {
+            if (!acc[a.sceneIndex])
+              acc[a.sceneIndex] = [];
+            const char = plan.characters.find((c) => c.id === a.characterId);
+            acc[a.sceneIndex].push({ ...a, characterName: char?.name || "Unknown" });
+            return acc;
+          }, {});
+          return { plan, scenes, rules: plan.rules };
+        }
+        case "generate_consistent_prompt": {
+          const sceneCount = input.sceneCount || 5;
+          const basePrompt = input.basePrompt || "";
+          const prompts = [];
+          for (let i = 0;i < sceneCount; i++) {
+            const sceneAssignments = plan.assignments.filter((a) => a.sceneIndex === i);
+            const refs = [];
+            const descriptions = [];
+            for (const assignment of sceneAssignments) {
+              const char = plan.characters.find((c) => c.id === assignment.characterId);
+              if (!char)
+                continue;
+              let charRef = char.description;
+              if (char.attributes.appearance)
+                charRef += `, ${char.attributes.appearance}`;
+              if (char.attributes.clothing && plan.rules.lockClothing) {
+                charRef += `, wearing ${char.attributes.clothing}`;
+              }
+              if (char.attributes.colors && plan.rules.lockColors) {
+                charRef += `, colors: ${char.attributes.colors.join(", ")}`;
+              }
+              if (char.attributes.brand)
+                charRef += `, ${char.attributes.brand} brand`;
+              descriptions.push(`${char.name} (${assignment.role}): ${charRef} - ${assignment.action} at ${assignment.position}`);
+              if (char.referenceImages.length > 0) {
+                refs.push(...char.referenceImages);
+              }
+            }
+            const scenePrompt = [
+              `Scene ${i + 1}:`,
+              descriptions.length > 0 ? descriptions.join(". ") : basePrompt,
+              plan.rules.maintainAppearance ? "[CONSISTENT: maintain character appearance across all scenes]" : ""
+            ].filter(Boolean).join(" ");
+            prompts.push({
+              scene: i + 1,
+              prompt: scenePrompt,
+              references: refs
+            });
+          }
+          return {
+            prompts,
+            rules: plan.rules,
+            charactersUsed: plan.characters.map((c) => ({
+              name: c.name,
+              type: c.type,
+              referenceCount: c.referenceImages.length
+            }))
+          };
+        }
+        case "set_rules": {
+          if (input.rules) {
+            plan.rules = { ...plan.rules, ...input.rules };
+            savePlan();
+          }
+          return { rules: plan.rules };
+        }
+        default:
+          throw new Error(`Unknown action: ${action}`);
+      }
+    }
+  };
+}
+
 // src/index.ts
 function brandlyPlugin({
   directory
@@ -2827,7 +3922,11 @@ function brandlyPlugin({
     createProviderTool(ctx),
     createVideoEditTool(ctx),
     createVideoRenderTool(ctx),
-    createAssemblyTool(ctx)
+    createAssemblyTool(ctx),
+    createBrandKitTool(ctx),
+    createBatchVariationsTool(ctx),
+    createAutoCaptionTool(ctx),
+    createSceneConsistencyTool(ctx)
   ];
   return {
     name: "brandly",

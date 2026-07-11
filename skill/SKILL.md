@@ -8,12 +8,102 @@ description: Generate viral-ready product marketing videos from a single idea or
 ## What This Plugin Does
 Brandly turns a product idea + optional image into a complete, platform-ready marketing video. It orchestrates specialized AI agents through a pipeline: trend research → concept → script → asset generation → quality validation → publishing.
 
+## The Director's Vision
+
+Every product video follows cinematic principles:
+
+### The STAMP Framework
+Evaluate every video against these principles:
+- **S**hot Intentionality — Does each shot have a reason to exist beyond looking good?
+- **T**emporal Logic — Does one moment cause or lead to the next?
+- **A**uthorial Vision — Is there a direction across time, not just a style?
+- **M**ontage Intelligence — Does the edit create meaning, not just connect images?
+- **P**remise — Can you state your film's reason in one sentence?
+
+### The Three-Act Structure
+Every video follows a story arc:
+- **Act 1 (0-3 seconds)**: The Hook — Grab them by the throat
+- **Act 2 (3-12 seconds)**: The Journey — Build desire, show the transformation
+- **Act 3 (12-15+ seconds)**: The Payoff — Deliver the emotional resolution
+
+### The 8-Layer Prompt Framework
+Every production-grade prompt must address:
+1. **SUBJECT** — Who/what is the focus?
+2. **EMOTION** — What feeling should it evoke?
+3. **OPTICS** — Lens, depth of field, FOV
+4. **MOTION** — How does subject/camera move?
+5. **LIGHTING** — Atmosphere, mood, direction
+6. **STYLE** — Genre, era, aesthetic
+7. **AUDIO** — Dialogue, SFX, music
+8. **CONTINUITY** — What connects this to other shots?
+
 ## When To Use
 Trigger on: "make a product video", "create a marketing video for [product]", "generate a TikTok ad", "make a viral product clip", "Brandly this product", "turn my product into a video"
 
+## Virality Predictor Integration
+
+Brandly uses the **Higgsfield Virality Predictor** (`brain_activity`) to score finished videos for virality potential. This is the industry standard for video creative testing.
+
+### What It Measures
+- **Hook Strength** — How effectively the video captures attention
+- **Sustain** — How long attention is maintained
+- **Brain Region Scores** — Visual, Auditory, Language, Attention, Default Mode
+- **Overall Virality Score** — Composite score (0-100)
+
+### Scoring Thresholds
+| Score | Rating | Action |
+|-------|--------|--------|
+| 80-100 | Excellent | Ready for publishing |
+| 60-79 | Good | Minor improvements recommended |
+| 40-59 | Average | Significant re-edit needed |
+| 0-39 | Poor | Major rework required |
+
+### Platform-Specific Requirements
+| Platform | Minimum Score | Hook Requirement |
+|----------|---------------|------------------|
+| TikTok | 60+ | Hook in first 1-2 seconds |
+| Instagram | 55+ | Hook in first 2-3 seconds |
+| YouTube | 50+ | Hook in first 3-5 seconds |
+| Twitter/X | 65+ | Hook in first 1-2 seconds |
+
+### Command
+```bash
+higgsfield generate create brain_activity --video ./finished-video.mp4 --wait
+```
+
+### Example Output
+```
+Overall score: 72/100
+Peak hook: 65% at 2s
+Sustain: 84%
+Strongest region: Visual Cortex (78)
+Risk: Default Mode is moderate (32)
+Open report: https://app.higgsfield.ai/apps/virality-predictor?resultJobId=...
+```
+
 ## How It Works
 
-### Step 0: Analyze an Image (optional but recommended)
+### Step 0: Select Provider (NEW)
+Choose your preferred AI generation platform:
+
+```bash
+brandly_select_provider(projectID="<uuid>", providerId="higgsfield")
+```
+
+**Available Providers:**
+- **Higgsfield AI** — Comprehensive platform (image, video, 3D, audio, marketing)
+- **Kling AI (可灵)** — Strong motion and physics, budget-friendly
+- **OpenArt** — Community models, experimental aesthetics
+- **Magnific AI** — Image upscaling and enhancement
+- **Runway ML** — Professional cinematic quality
+- **Pika Labs** — Creative stylized effects
+
+**List Providers:**
+```bash
+brandly_select_provider(listOnly=true)
+```
+
+### Step 1: Analyze an Image (optional but recommended)
 Before starting a project, deep-analyze any product image. This feeds every downstream agent with forensic-level detail:
 ```
 brandly_analyze_image(
@@ -152,6 +242,216 @@ Generated files in `imagen/`, `videgen/`, and `audgen/` are organized per-projec
 - The pipeline checks budget before each expensive operation
 - If budget runs out, the pipeline pauses and reports what's been spent
 - Check with brandly_status to see remaining budget
+
+## Download & Export
+
+### Download Generated Media
+After asset/audio phases, download generated files locally:
+```
+brandly_download(
+  projectID="<uuid>",
+  mediaType="video",
+  mediaUrl="https://higgsfield.ai/...",
+  filename="shot-1.mp4",
+  jobId="<optional-job-id>"
+)
+```
+
+**Media Types:**
+- `image` → saves to `imagen/{project-id}/`
+- `video` → saves to `videgen/{project-id}/`
+- `audio` → saves to `audgen/{project-id}/`
+
+### Export Project
+Export all artifacts and media files:
+```
+brandly_export(
+  projectID="<uuid>",
+  outputPath="./my-project-export/"  // optional
+)
+```
+
+**Export Includes:**
+- All phase artifacts (markdown, JSON)
+- All downloaded media (images, videos, audio)
+- Export manifest with file inventory
+
+**Default Export Location:** `.brandly/projects/{id}/export/`
+
+## Video Editing with Remotion
+
+Brandly includes **Remotion** for programmatic video editing. Create compositions, trim, concat, overlay, add transitions, text, audio, and effects.
+
+### Video Edit Operations
+
+#### Trim Video
+```
+brandly_video_edit(
+  projectID="<uuid>",
+  operation="trim",
+  inputFiles=["shot-1.mp4"],
+  params={
+    "startTime": 2,
+    "duration": 5,
+    "width": 1920,
+    "height": 1080
+  }
+)
+```
+
+#### Concatenate Videos
+```
+brandly_video_edit(
+  projectID="<uuid>",
+  operation="concat",
+  inputFiles=["shot-1.mp4", "shot-2.mp4", "shot-3.mp4"],
+  params={
+    "transitionDuration": 1,
+    "width": 1920,
+    "height": 1080
+  }
+)
+```
+
+#### Overlay Image/Video
+```
+brandly_video_edit(
+  projectID="<uuid>",
+  operation="overlay",
+  inputFiles=["main-video.mp4", "logo.png"],
+  params={
+    "position": "top-right",
+    "scale": 0.2,
+    "width": 1920,
+    "height": 1080
+  }
+)
+```
+
+#### Add Transitions
+```
+brandly_video_edit(
+  projectID="<uuid>",
+  operation="transition",
+  inputFiles=["clip-1.mp4", "clip-2.mp4"],
+  params={
+    "transitionType": "fade",
+    "transitionDuration": 1,
+    "width": 1920,
+    "height": 1080
+  }
+)
+```
+
+#### Add Text Overlay
+```
+brandly_video_edit(
+  projectID="<uuid>",
+  operation="add-text",
+  inputFiles=["video.mp4"],
+  params={
+    "text": "Brand Name",
+    "fontSize": 72,
+    "color": "#ffffff",
+    "position": "center",
+    "width": 1920,
+    "height": 1080
+  }
+)
+```
+
+#### Add Audio
+```
+brandly_video_edit(
+  projectID="<uuid>",
+  operation="add-audio",
+  inputFiles=["video.mp4"],
+  params={
+    "audioFile": "background-music.mp3",
+    "volume": 0.8,
+    "width": 1920,
+    "height": 1080
+  }
+)
+```
+
+#### Add Effects
+```
+brandly_video_edit(
+  projectID="<uuid>",
+  operation="add-effect",
+  inputFiles=["video.mp4"],
+  params={
+    "effectType": "blur",
+    "intensity": 5,
+    "width": 1920,
+    "height": 1080
+  }
+)
+```
+
+#### Resize Video
+```
+brandly_video_edit(
+  projectID="<uuid>",
+  operation="resize",
+  inputFiles=["video.mp4"],
+  params={
+    "newWidth": 1280,
+    "newHeight": 720,
+    "width": 1920,
+    "height": 1080
+  }
+)
+```
+
+#### Crop Video
+```
+brandly_video_edit(
+  projectID="<uuid>",
+  operation="crop",
+  inputFiles=["video.mp4"],
+  params={
+    "x": 100,
+    "y": 50,
+    "width": 1280,
+    "height": 720
+  }
+)
+```
+
+### Render Video
+After creating a composition, render it to produce the final video:
+
+```
+brandly_render_video(
+  projectID="<uuid>",
+  compositionPath="./video-edits/<project-id>/composition-<timestamp>.tsx",
+  outputPath="./renders/<project-id>/final-video.mp4",
+  format="mp4",
+  quality="high"
+)
+```
+
+**Quality Presets:**
+- `low` — Fast rendering, smaller file size
+- `medium` — Balanced quality and speed
+- `high` — Good quality, recommended for most uses
+- `ultra` — Maximum quality, slower rendering
+
+**Output Formats:**
+- `mp4` — H.264, most compatible
+- `webm` — VP8, web-optimized
+- `gif` — Animated GIF
+
+### Video Editing Workflow
+
+1. **Generate assets** — Use Higgsfield/Kling to generate images and videos
+2. **Download assets** — Use `brandly_download` to save locally
+3. **Edit videos** — Use `brandly_video_edit` to create compositions
+4. **Render** — Use `brandly_render_video` to produce final video
+5. **Validate** — Use `brandly_validate` with Virality Predictor
+6. **Export** — Use `brandly_export` to package everything
 
 ## Tips
 - **Run image analysis first** — even before starting a project. The analysis gives you a creative brief you can refine before committing credits.
