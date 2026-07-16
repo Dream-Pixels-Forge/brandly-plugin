@@ -1,0 +1,912 @@
+import { Tool } from "@opencode-ai/plugin";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { randomUUID } from "node:crypto";
+import { ToolContext } from "../types";
+
+interface CharacterProfile {
+  id: string;
+  name: string;
+  type: "person" | "product" | "object" | "animal" | "mascot" | "custom";
+  description: string;
+  appearance: {
+    physical?: string;
+    clothing?: string;
+    accessories?: string[];
+    colors?: string[];
+    style?: string;
+    brand?: string;
+  };
+  references: {
+    images: string[];
+    videos?: string[];
+    trainedModel?: string;
+  };
+  providers: {
+    kling?: { subjectId?: string; elements3Id?: string };
+    seedance?: { referenceIds?: string[] };
+    higgsfield?: { soulId?: string; elementId?: string };
+    openart?: { projectId?: string };
+  };
+  consistencyScore: number;
+  usageCount: number;
+  lastUsed?: string;
+  tags?: string[];
+  createdAt: string;
+}
+
+interface ConsistencyGuide {
+  characterId: string;
+  guidelines: {
+    dos: string[];
+    donts: string[];
+    referenceAngles?: string[];
+    lightingNotes?: string;
+  };
+  sceneAssignments: {
+    sceneIndex: number;
+    role: "primary" | "secondary" | "background";
+    position?: string;
+    action?: string;
+  }[];
+}
+
+function generateId(prefix: string): string {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function loadCharacters(ctx: ToolContext): CharacterProfile[] {
+  const charactersFile = join(ctx.artifactsDir, "characters.json");
+  if (existsSync(charactersFile)) {
+    try {
+      return JSON.parse(readFileSync(charactersFile, "utf-8"));
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function saveCharacters(ctx: ToolContext, characters: CharacterProfile[]): void {
+  if (!existsSync(ctx.artifactsDir)) {
+    mkdirSync(ctx.artifactsDir, { recursive: true });
+  }
+  writeFileSync(
+    join(ctx.artifactsDir, "characters.json"),
+    JSON.stringify(characters, null, 2)
+  );
+}
+
+function loadGuides(ctx: ToolContext): ConsistencyGuide[] {
+  const guidesFile = join(ctx.artifactsDir, "consistency-guides.json");
+  if (existsSync(guidesFile)) {
+    try {
+      return JSON.parse(readFileSync(guidesFile, "utf-8"));
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function saveGuides(ctx: ToolContext, guides: ConsistencyGuide[]): void {
+  if (!existsSync(ctx.artifactsDir)) {
+    mkdirSync(ctx.artifactsDir, { recursive: true });
+  }
+  writeFileSync(
+    join(ctx.artifactsDir, "consistency-guides.json"),
+    JSON.stringify(guides, null, 2)
+  );
+}
+
+export function createCharacterConsistencyTool(ctx: ToolContext): Tool {
+  return {
+    name: "brandly_character_consistency",
+    description:
+      "Advanced character consistency management with multi-provider support. Create character profiles with reference images, manage identity across Kling Elements 3.0, Seedance references, Higgsfield Soul ID, and more. Generate consistency guides, score character fidelity, and breakdown scripts into scenes/shots with character assignments.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        action: {
+          type: "string",
+          enum: [
+            "create_character",
+            "update_character",
+            "get_character",
+            "list_characters",
+            "delete_character",
+            "add_reference_image",
+            "remove_reference_image",
+            "create_consistency_guide",
+            "get_consistency_guide",
+            "score_consistency",
+            "generate_kling_prompt",
+            "generate_seedance_prompt",
+            "generate_higgsfield_prompt",
+            "export_character_bible",
+            "breakdown_script",
+          ],
+          description: "Action to perform",
+        },
+        characterId: {
+          type: "string",
+          description: "Character ID",
+        },
+        name: {
+          type: "string",
+          description: "Character name",
+        },
+        type: {
+          type: "string",
+          enum: ["person", "product", "object", "animal", "mascot", "custom"],
+          description: "Character type",
+        },
+        description: {
+          type: "string",
+          description: "Character description",
+        },
+        appearance: {
+          type: "object",
+          description: "Physical appearance details",
+          properties: {
+            physical: { type: "string" },
+            clothing: { type: "string" },
+            accessories: { type: "array", items: { type: "string" } },
+            colors: { type: "array", items: { type: "string" } },
+            style: { type: "string" },
+            brand: { type: "string" },
+          },
+        },
+        referenceImages: {
+          type: "array",
+          items: { type: "string" },
+          description: "Reference image paths or URLs",
+        },
+        provider: {
+          type: "string",
+          enum: ["kling", "seedance", "higgsfield", "openart"],
+          description: "Target provider for prompt generation",
+        },
+        guide: {
+          type: "object",
+          description: "Consistency guide guidelines",
+          properties: {
+            dos: { type: "array", items: { type: "string" } },
+            donts: { type: "array", items: { type: "string" } },
+            referenceAngles: { type: "array", items: { type: "string" } },
+            lightingNotes: { type: "string" },
+          },
+        },
+        sceneAssignments: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              sceneIndex: { type: "number" },
+              role: { type: "string", enum: ["primary", "secondary", "background"] },
+              position: { type: "string" },
+              action: { type: "string" },
+            },
+          },
+          description: "Scene assignments for the character",
+        },
+        tags: {
+          type: "array",
+          items: { type: "string" },
+          description: "Tags for categorization",
+        },
+        sceneIndex: {
+          type: "number",
+          description: "Scene index for scoring",
+        },
+        shots: {
+          type: "array",
+          description: "Shot descriptions for consistency scoring",
+          items: { type: "string" },
+        },
+        projectDescription: {
+          type: "string",
+          description: "Project description for prompt generation",
+        },
+        style: {
+          type: "string",
+          description: "Visual style for prompt generation",
+        },
+        script: {
+          type: "string",
+          description: "Script text to breakdown into scenes/shots",
+        },
+        shotDuration: {
+          type: "number",
+          description: "Target duration per shot in seconds (default: 5)",
+        },
+      },
+      required: ["action"],
+    },
+    execute: async (args: Record<string, unknown>) => {
+      const action = args.action as string;
+      const characters = loadCharacters(ctx);
+      const guides = loadGuides(ctx);
+
+      switch (action) {
+        case "create_character": {
+          const name = args.name as string;
+          if (!name) {
+            return { success: false, error: "Name is required" };
+          }
+
+          const character: CharacterProfile = {
+            id: generateId("char"),
+            name,
+            type: (args.type as any) || "person",
+            description: (args.description as string) || "",
+            appearance: (args.appearance as any) || {},
+            references: {
+              images: (args.referenceImages as string[]) || [],
+            },
+            providers: {},
+            consistencyScore: 1.0,
+            usageCount: 0,
+            tags: (args.tags as string[]) || [],
+            createdAt: new Date().toISOString(),
+          };
+
+          characters.push(character);
+          saveCharacters(ctx, characters);
+
+          return {
+            success: true,
+            character,
+            message: `Character "${name}" created with ID: ${character.id}`,
+          };
+        }
+
+        case "update_character": {
+          const charId = args.characterId as string;
+          if (!charId) {
+            return { success: false, error: "characterId is required" };
+          }
+
+          const index = characters.findIndex((c) => c.id === charId);
+          if (index === -1) {
+            return { success: false, error: `Character ${charId} not found` };
+          }
+
+          const existing = characters[index];
+          if (args.name) existing.name = args.name as string;
+          if (args.type) existing.type = args.type as any;
+          if (args.description) existing.description = args.description as string;
+          if (args.appearance) existing.appearance = args.appearance as any;
+          if (args.tags) existing.tags = args.tags as string[];
+
+          characters[index] = existing;
+          saveCharacters(ctx, characters);
+
+          return { success: true, character: existing };
+        }
+
+        case "get_character": {
+          const charId = args.characterId as string;
+          if (!charId) {
+            return { success: false, error: "characterId is required" };
+          }
+
+          const character = characters.find((c) => c.id === charId);
+          if (!character) {
+            return { success: false, error: `Character ${charId} not found` };
+          }
+
+          return { success: true, character };
+        }
+
+        case "list_characters": {
+          return {
+            success: true,
+            characters,
+            count: characters.length,
+          };
+        }
+
+        case "delete_character": {
+          const charId = args.characterId as string;
+          if (!charId) {
+            return { success: false, error: "characterId is required" };
+          }
+
+          const filtered = characters.filter((c) => c.id !== charId);
+          if (filtered.length === characters.length) {
+            return { success: false, error: `Character ${charId} not found` };
+          }
+
+          saveCharacters(ctx, filtered);
+          return { success: true, message: `Character ${charId} deleted` };
+        }
+
+        case "add_reference_image": {
+          const charId = args.characterId as string;
+          const imageUrl = (args.referenceImages as string[])?.[0];
+          if (!charId || !imageUrl) {
+            return { success: false, error: "characterId and referenceImages[0] are required" };
+          }
+
+          const character = characters.find((c) => c.id === charId);
+          if (!character) {
+            return { success: false, error: `Character ${charId} not found` };
+          }
+
+          character.references.images.push(imageUrl);
+          saveCharacters(ctx, characters);
+
+          return {
+            success: true,
+            message: `Added reference image to ${character.name}`,
+            referenceCount: character.references.images.length,
+          };
+        }
+
+        case "remove_reference_image": {
+          const charId = args.characterId as string;
+          const imageUrl = (args.referenceImages as string[])?.[0];
+          if (!charId || !imageUrl) {
+            return { success: false, error: "characterId and referenceImages[0] are required" };
+          }
+
+          const character = characters.find((c) => c.id === charId);
+          if (!character) {
+            return { success: false, error: `Character ${charId} not found` };
+          }
+
+          character.references.images = character.references.images.filter(
+            (img) => img !== imageUrl
+          );
+          saveCharacters(ctx, characters);
+
+          return {
+            success: true,
+            message: `Removed reference image from ${character.name}`,
+            referenceCount: character.references.images.length,
+          };
+        }
+
+        case "create_consistency_guide": {
+          const charId = args.characterId as string;
+          if (!charId) {
+            return { success: false, error: "characterId is required" };
+          }
+
+          const character = characters.find((c) => c.id === charId);
+          if (!character) {
+            return { success: false, error: `Character ${charId} not found` };
+          }
+
+          const guide: ConsistencyGuide = {
+            characterId: charId,
+            guidelines: (args.guide as any) || { dos: [], donts: [] },
+            sceneAssignments: (args.sceneAssignments as any[]) || [],
+          };
+
+          // Remove existing guide for this character
+          const filteredGuides = guides.filter((g) => g.characterId !== charId);
+          filteredGuides.push(guide);
+          saveGuides(ctx, filteredGuides);
+
+          return {
+            success: true,
+            guide,
+            message: `Consistency guide created for "${character.name}"`,
+          };
+        }
+
+        case "get_consistency_guide": {
+          const charId = args.characterId as string;
+          if (!charId) {
+            return { success: false, error: "characterId is required" };
+          }
+
+          const guide = guides.find((g) => g.characterId === charId);
+          if (!guide) {
+            return { success: false, error: `No guide found for character ${charId}` };
+          }
+
+          return { success: true, guide };
+        }
+
+        case "score_consistency": {
+          const charId = args.characterId as string;
+          const shots = (args.shots as string[]) || [];
+          if (!charId) {
+            return { success: false, error: "characterId is required" };
+          }
+
+          const character = characters.find((c) => c.id === charId);
+          if (!character) {
+            return { success: false, error: `Character ${charId} not found` };
+          }
+
+          // Score based on reference count and description completeness
+          let score = 0.5; // Base score
+          const refCount = character.references.images.length;
+          score += Math.min(refCount * 0.1, 0.3); // Up to 0.3 from references
+          if (character.appearance.physical) score += 0.05;
+          if (character.appearance.clothing) score += 0.05;
+          if (character.appearance.colors?.length) score += 0.05;
+          if (character.appearance.style) score += 0.05;
+
+          // Analyze shot descriptions for consistency keywords
+          const consistencyKeywords = [
+            "same",
+            "consistent",
+            "matching",
+            "identical",
+            "maintain",
+            "keep",
+            "preserve",
+          ];
+          const shotBonus = shots.reduce((acc, shot) => {
+            const hasConsistency = consistencyKeywords.some((kw) =>
+              shot.toLowerCase().includes(kw)
+            );
+            return acc + (hasConsistency ? 0.02 : 0);
+          }, 0);
+
+          score = Math.min(score + shotBonus, 1.0);
+
+          // Update character score
+          character.consistencyScore = Math.round(score * 100) / 100;
+          saveCharacters(ctx, characters);
+
+          return {
+            success: true,
+            characterId: charId,
+            characterName: character.name,
+            consistencyScore: character.consistencyScore,
+            factors: {
+              referenceImages: refCount,
+              hasPhysicalDescription: !!character.appearance.physical,
+              hasClothingDescription: !!character.appearance.clothing,
+              hasColorPalette: !!character.appearance.colors?.length,
+              hasStyleGuide: !!character.appearance.style,
+            },
+            recommendations:
+              score < 0.7
+                ? [
+                    "Add more reference images (2-4 recommended)",
+                    "Provide detailed physical description",
+                    "Define color palette",
+                    "Add clothing/style notes",
+                  ]
+                : ["Good consistency foundation"],
+          };
+        }
+
+        case "generate_kling_prompt": {
+          const charId = args.characterId as string;
+          const projectDesc = (args.projectDescription as string) || "";
+          if (!charId) {
+            return { success: false, error: "characterId is required" };
+          }
+
+          const character = characters.find((c) => c.id === charId);
+          if (!character) {
+            return { success: false, error: `Character ${charId} not found` };
+          }
+
+          // Generate Kling 3.0 Elements 3.0 prompt
+          const prompt = [
+            `Subject: ${character.name}`,
+            character.description ? `Description: ${character.description}` : "",
+            character.appearance.physical
+              ? `Physical: ${character.appearance.physical}`
+              : "",
+            character.appearance.clothing
+              ? `Clothing: ${character.appearance.clothing}`
+              : "",
+            character.appearance.colors?.length
+              ? `Color palette: ${character.appearance.colors.join(", ")}`
+              : "",
+            projectDesc ? `\nScene: ${projectDesc}` : "",
+            `\n[Elements 3.0 Subject Binding - Reference: ${character.references.images.length} images]`,
+          ]
+            .filter(Boolean)
+            .join("\n");
+
+          // Update usage
+          character.usageCount++;
+          character.lastUsed = new Date().toISOString();
+          saveCharacters(ctx, characters);
+
+          return {
+            success: true,
+            provider: "kling",
+            prompt,
+            referenceCount: character.references.images.length,
+            elements3Binding: true,
+            notes: "Upload reference images as Subject in Kling 3.0 Elements 3.0 library",
+          };
+        }
+
+        case "generate_seedance_prompt": {
+          const charId = args.characterId as string;
+          const projectDesc = (args.projectDescription as string) || "";
+          const style = (args.style as string) || "cinematic";
+          if (!charId) {
+            return { success: false, error: "characterId is required" };
+          }
+
+          const character = characters.find((c) => c.id === charId);
+          if (!character) {
+            return { success: false, error: `Character ${charId} not found` };
+          }
+
+          // Generate Seedance 2.5 prompt with character reference
+          const prompt = [
+            `[Style: ${style}]`,
+            `Character: ${character.name}`,
+            character.appearance.physical
+              ? `Appearance: ${character.appearance.physical}`
+              : "",
+            character.appearance.clothing
+              ? `Attire: ${character.appearance.clothing}`
+              : "",
+            character.appearance.style
+              ? `Aesthetic: ${character.appearance.style}`
+              : "",
+            projectDesc ? `\nScene: ${projectDesc}` : "",
+            `\n[Character Lock - Reference: ${character.references.images.length} images]`,
+            `[Consistency: Strict - Maintain identity across transitions]`,
+          ]
+            .filter(Boolean)
+            .join("\n");
+
+          character.usageCount++;
+          character.lastUsed = new Date().toISOString();
+          saveCharacters(ctx, characters);
+
+          return {
+            success: true,
+            provider: "seedance",
+            prompt,
+            referenceCount: character.references.images.length,
+            characterLock: true,
+            notes: "Upload reference images as Visual Reference in Seedance 2.5",
+          };
+        }
+
+        case "generate_higgsfield_prompt": {
+          const charId = args.characterId as string;
+          const projectDesc = (args.projectDescription as string) || "";
+          if (!charId) {
+            return { success: false, error: "characterId is required" };
+          }
+
+          const character = characters.find((c) => c.id === charId);
+          if (!character) {
+            return { success: false, error: `Character ${charId} not found` };
+          }
+
+          // Generate Higgsfield Soul ID prompt
+          const prompt = [
+            `Character: ${character.name}`,
+            character.description ? `Identity: ${character.description}` : "",
+            character.appearance.physical
+              ? `Features: ${character.appearance.physical}`
+              : "",
+            character.appearance.clothing
+              ? `Style: ${character.appearance.clothing}`
+              : "",
+            projectDesc ? `\nContext: ${projectDesc}` : "",
+            `\n[Soul ID Training - ${character.references.images.length} reference images]`,
+            character.providers.higgsfield?.soulId
+              ? `[Soul ID: ${character.providers.higgsfield.soulId}]`
+              : "[Soul ID: Not yet trained]",
+          ]
+            .filter(Boolean)
+            .join("\n");
+
+          character.usageCount++;
+          character.lastUsed = new Date().toISOString();
+          saveCharacters(ctx, characters);
+
+          return {
+            success: true,
+            provider: "higgsfield",
+            prompt,
+            referenceCount: character.references.images.length,
+            soulId: character.providers.higgsfield?.soulId || null,
+            notes: character.providers.higgsfield?.soulId
+              ? "Use Soul ID for identity-faithful generation"
+              : "Train Soul ID first with 4-10 reference images",
+          };
+        }
+
+        case "export_character_bible": {
+          const charId = args.characterId as string;
+          if (!charId) {
+            return { success: false, error: "characterId is required" };
+          }
+
+          const character = characters.find((c) => c.id === charId);
+          if (!character) {
+            return { success: false, error: `Character ${charId} not found` };
+          }
+
+          const guide = guides.find((g) => g.characterId === charId);
+
+          const bible = {
+            character,
+            consistencyGuide: guide,
+            providerInstructions: {
+              kling: {
+                setup: "Upload reference images to Elements 3.0 library",
+                binding: "Select character as Subject for automatic identity binding",
+                tips: [
+                  "Use 2-4 high-quality reference images",
+                  "Include front, side, and 3/4 views",
+                  "Consistent lighting across references",
+                ],
+              },
+              seedance: {
+                setup: "Upload reference images as Visual References",
+                binding: "Character Lock maintains identity across transitions",
+                tips: [
+                  "Up to 16 reference images supported",
+                  "Text-driven character insertion available",
+                  "Use video-to-video for existing footage",
+                ],
+              },
+              higgsfield: {
+                setup: "Train Soul ID with 4-10 reference images",
+                binding: "Soul ID creates reusable identity model",
+                tips: [
+                  "Use high-quality, well-lit photos",
+                  "Include multiple angles",
+                  "Training takes ~10 minutes",
+                ],
+              },
+            },
+            exportDate: new Date().toISOString(),
+          };
+
+          // Save bible file
+          const biblePath = join(
+            ctx.artifactsDir,
+            `character-bible-${charId}.json`
+          );
+          writeFileSync(biblePath, JSON.stringify(bible, null, 2));
+
+          return {
+            success: true,
+            bible,
+            savedTo: biblePath,
+          };
+        }
+
+        case "breakdown_script": {
+          const script = args.script as string;
+          if (!script) {
+            return { success: false, error: "script is required" };
+          }
+
+          const shotDuration = (args.shotDuration as number) || 5;
+          const style = (args.style as string) || "cinematic";
+
+          // Parse script into scenes
+          const sceneMarkers = script.match(
+            /^#{1,3}\s*(Scene|SCENE|Scene\s*\d+).*$/gm
+          );
+          const lines = script.split("\n").filter((l) => l.trim());
+
+          // Extract scenes
+          const scenes: {
+            index: number;
+            title: string;
+            content: string;
+            shots: {
+              index: number;
+              description: string;
+              duration: number;
+              characters: string[];
+              camera?: string;
+              lighting?: string;
+            }[];
+            characters: string[];
+          }[] = [];
+
+          let currentScene: (typeof scenes)[0] | null = null;
+          let shotIndex = 0;
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+
+            // Check for scene header
+            const sceneMatch = trimmed.match(
+              /^#{1,3}\s*(?:Scene|SCENE)\s*(\d+)?:?\s*[-:]?\s*(.*)$/i
+            );
+            if (sceneMatch) {
+              if (currentScene) {
+                scenes.push(currentScene);
+              }
+              currentScene = {
+                index: scenes.length + 1,
+                title:
+                  sceneMatch[2] ||
+                  `Scene ${sceneMatch[1] || scenes.length + 1}`,
+                content: "",
+                shots: [],
+                characters: [],
+              };
+              shotIndex = 0;
+              continue;
+            }
+
+            if (!currentScene) {
+              currentScene = {
+                index: 1,
+                title: "Scene 1",
+                content: "",
+                shots: [],
+                characters: [],
+              };
+            }
+
+            currentScene.content += trimmed + "\n";
+
+            // Extract character mentions (capitalized words that look like names)
+            const charMatches = trimmed.match(
+              /\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\b/g
+            );
+            if (charMatches) {
+              for (const char of charMatches) {
+                // Filter out common non-character words
+                const skipWords = [
+                  "The",
+                  "This",
+                  "That",
+                  "When",
+                  "Then",
+                  "What",
+                  "Where",
+                  "How",
+                  "Why",
+                  "Who",
+                  "Which",
+                  "Scene",
+                  "Shot",
+                  "Cut",
+                  "Fade",
+                  "Camera",
+                  "INT",
+                  "EXT",
+                  "Interior",
+                  "Exterior",
+                ];
+                if (
+                  !skipWords.includes(char) &&
+                  !currentScene.characters.includes(char)
+                ) {
+                  currentScene.characters.push(char);
+                }
+              }
+            }
+
+            // Create shots from action lines
+            const isAction =
+              trimmed.includes(".") &&
+              !trimmed.startsWith("[") &&
+              !trimmed.startsWith("(");
+            const isDialogue = trimmed.startsWith('"') || trimmed.startsWith('"');
+            const isDirection = trimmed.startsWith("[") || trimmed.startsWith("(");
+
+            if (isAction || isDialogue || isDirection) {
+              const existingCharInShot = currentScene.characters.length > 0
+                ? currentScene.characters
+                : [];
+
+              currentScene.shots.push({
+                index: ++shotIndex,
+                description: trimmed.replace(/[[\]()"]/g, "").trim(),
+                duration: isDialogue ? shotDuration + 2 : shotDuration,
+                characters: existingCharInShot,
+                camera: isDirection ? trimmed : undefined,
+              });
+            }
+          }
+
+          if (currentScene) {
+            scenes.push(currentScene);
+          }
+
+          // Generate shot list with timing
+          let totalDuration = 0;
+          const shotList = scenes.flatMap((scene) =>
+            scene.shots.map((shot) => {
+              totalDuration += shot.duration;
+              return {
+                scene: scene.index,
+                shot: shot.index,
+                globalShot: totalDuration / shot.duration,
+                description: shot.description,
+                duration: shot.duration,
+                timestamp: totalDuration - shot.duration,
+                characters: shot.characters,
+                camera: shot.camera,
+              };
+            })
+          );
+
+          // Match characters to existing profiles
+          const allSceneChars = scenes.flatMap((s) => s.characters);
+          const uniqueChars = [...new Set(allSceneChars)];
+          const matchedCharacters = uniqueChars
+            .map((name) => {
+              const existing = characters.find(
+                (c) =>
+                  c.name.toLowerCase() === name.toLowerCase() ||
+                  c.name.includes(name) ||
+                  name.includes(c.name)
+              );
+              return {
+                name,
+                existingCharacter: existing || null,
+                needsCreation: !existing,
+              };
+            })
+            .filter(
+              (c) => c.needsCreation || c.existingCharacter
+            );
+
+          // Generate provider prompts for each scene
+          const providerPrompts = {
+            kling: scenes.map((scene) => ({
+              scene: scene.index,
+              prompt: `Scene ${scene.index}: ${scene.title}\nCharacters: ${scene.characters.join(", ")}\n[Elements 3.0 Subject Binding]`,
+            })),
+            seedance: scenes.map((scene) => ({
+              scene: scene.index,
+              prompt: `[Style: ${style}] Scene ${scene.index}: ${scene.title}\nCharacters: ${scene.characters.join(", ")}\n[Character Lock]`,
+            })),
+            higgsfield: scenes.map((scene) => ({
+              scene: scene.index,
+              prompt: `Scene ${scene.index}: ${scene.title}\nCharacters: ${scene.characters.join(", ")}\n[Soul ID Reference]`,
+            })),
+          };
+
+          return {
+            success: true,
+            breakdown: {
+              sceneCount: scenes.length,
+              shotCount: shotList.length,
+              totalDuration,
+              estimatedVideoLength: `${Math.ceil(totalDuration / 60)}:${String(totalDuration % 60).padStart(2, "0")}`,
+              scenes: scenes.map((s) => ({
+                index: s.index,
+                title: s.title,
+                shotCount: s.shots.length,
+                characters: s.characters,
+                content: s.content.trim(),
+              })),
+              shotList,
+              characters: matchedCharacters,
+              providerPrompts,
+            },
+            recommendations: {
+              shotsPerScene: scenes.map((s) =>
+                s.shots.length < 2
+                  ? `Scene ${s.index}: Consider adding more shots for visual variety`
+                  : null
+              ).filter(Boolean),
+              characterConsistency: matchedCharacters.filter((c) => c.needsCreation)
+                .length > 0
+                ? `Create character profiles for: ${matchedCharacters.filter((c) => c.needsCreation).map((c) => c.name).join(", ")}`
+                : "All characters have existing profiles",
+            },
+          };
+        }
+
+        default:
+          return { success: false, error: `Unknown action: ${action}` };
+      }
+    },
+  };
+}

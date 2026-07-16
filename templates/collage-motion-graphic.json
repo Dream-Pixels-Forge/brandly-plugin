@@ -1,0 +1,128 @@
+{
+  "name": "Collage Motion Graphic",
+  "style": "collage_motion_graphic",
+  "description": "Layered, textured collage-style motion graphics with overlapping elements, depth, and artistic composition",
+  "duration": 7,
+  "dimensions": { "width": 1920, "height": 1080 },
+  "fps": 30,
+  "scenes": [
+    {
+      "id": "collage-intro",
+      "name": "Collage Intro",
+      "duration": 3,
+      "background": "linear-gradient(45deg, #1a1a2e, #16213e)",
+      "elements": [
+        {
+          "type": "rect",
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 100,
+          "color": "rgba(255,255,255,0.03)",
+          "animation": { "type": "fadeIn", "duration": 1 }
+        },
+        {
+          "type": "rect",
+          "x": 5,
+          "y": 10,
+          "width": 35,
+          "height": 45,
+          "color": "#2a2a4a",
+          "borderRadius": 8,
+          "rotation": -5,
+          "animation": { "type": "scaleIn", "duration": 0.6, "delay": 0.2, "easing": "spring" }
+        },
+        {
+          "type": "rect",
+          "x": 60,
+          "y": 15,
+          "width": 35,
+          "height": 45,
+          "color": "#2a2a4a",
+          "borderRadius": 8,
+          "rotation": 5,
+          "animation": { "type": "scaleIn", "duration": 0.6, "delay": 0.4, "easing": "spring" }
+        },
+        {
+          "type": "rect",
+          "x": 30,
+          "y": 50,
+          "width": 40,
+          "height": 40,
+          "color": "#2a2a4a",
+          "borderRadius": 8,
+          "animation": { "type": "scaleIn", "duration": 0.6, "delay": 0.6, "easing": "spring" }
+        },
+        {
+          "type": "text",
+          "x": 15,
+          "y": 70,
+          "width": 70,
+          "text": "YOUR BRAND",
+          "color": "#ffffff",
+          "fontSize": 72,
+          "fontWeight": "900",
+          "fontFamily": "Impact, sans-serif",
+          "animation": { "type": "slideInBottom", "duration": 0.8, "delay": 0.8, "easing": "easeOut" }
+        },
+        {
+          "type": "text",
+          "x": 20,
+          "y": 85,
+          "width": 60,
+          "text": "COLLAGE STYLE",
+          "color": "rgba(255,255,255,0.6)",
+          "fontSize": 28,
+          "fontWeight": "600",
+          "fontFamily": "Arial, sans-serif",
+          "letterSpacing": 8,
+          "animation": { "type": "fadeIn", "duration": 0.6, "delay": 1.2 }
+        }
+      ]
+    },
+    {
+      "id": "collage-content",
+      "name": "Content Showcase",
+      "duration": 2,
+      "background": "linear-gradient(135deg, #16213e, #1a1a2e)",
+      "elements": [
+        {
+          "type": "rect",
+          "x": 10,
+          "y": 10,
+          "width": 45,
+          "height": 35,
+          "color": "#2a2a4a",
+          "borderRadius": 12,
+          "animation": { "type": "scaleIn", "duration": 0.5, "delay": 0.2, "easing": "spring" }
+        },
+        {
+          "type": "rect",
+          "x": 45,
+          "y": 10,
+          "width": 45,
+          "height": 35,
+          "color": "#2a2a4a",
+          "borderRadius": 12,
+          "animation": { "type": "scaleIn", "duration": 0.5, "delay": 0.4, "easing": "spring" }
+        },
+        {
+          "type": "text",
+          "x": 10,
+          "y": 55,
+          "width": 80,
+          "text": "Showcase Your Content",
+          "color": "#ffffff",
+          "fontSize": 36,
+          "fontWeight": "bold",
+          "fontFamily": "Arial, sans-serif",
+          "animation": { "type": "fadeIn", "duration": 0.5, "delay": 0.6 }
+        }
+      ]
+    }
+  ],
+  "audio": {
+    "bgm": "upbeat",
+    "volume": 0.6
+  }
+}

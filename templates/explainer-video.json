@@ -1,0 +1,250 @@
+{
+  "name": "Explainer Video",
+  "style": "explainer_video",
+  "description": "Educational explainer video with problem, solution, benefits, and call-to-action sections",
+  "duration": 11,
+  "dimensions": { "width": 1920, "height": 1080 },
+  "fps": 30,
+  "scenes": [
+    {
+      "id": "problem",
+      "name": "The Problem",
+      "duration": 3,
+      "background": "linear-gradient(180deg, #1a1a2e, #0f0f0f)",
+      "elements": [
+        {
+          "type": "text",
+          "x": 10,
+          "y": 15,
+          "width": 80,
+          "text": "THE PROBLEM",
+          "color": "#ff6b6b",
+          "fontSize": 24,
+          "fontWeight": "600",
+          "fontFamily": "Arial, sans-serif",
+          "letterSpacing": 6,
+          "animation": { "type": "fadeIn", "duration": 0.5 }
+        },
+        {
+          "type": "text",
+          "x": 10,
+          "y": 30,
+          "width": 80,
+          "text": "Struggling to Create Engaging Content?",
+          "color": "#ffffff",
+          "fontSize": 48,
+          "fontWeight": "bold",
+          "fontFamily": "Arial, sans-serif",
+          "animation": { "type": "slideInLeft", "duration": 0.6, "delay": 0.3, "easing": "easeOut" }
+        },
+        {
+          "type": "rect",
+          "x": 10,
+          "y": 60,
+          "width": 80,
+          "height": 30,
+          "color": "rgba(255,255,255,0.05)",
+          "borderRadius": 12,
+          "animation": { "type": "fadeIn", "duration": 0.5, "delay": 0.6 }
+        },
+        {
+          "type": "text",
+          "x": 15,
+          "y": 65,
+          "width": 70,
+          "text": "Most businesses spend hours creating videos that don't convert.",
+          "color": "rgba(255,255,255,0.7)",
+          "fontSize": 20,
+          "fontFamily": "Arial, sans-serif",
+          "animation": { "type": "fadeIn", "duration": 0.5, "delay": 0.8 }
+        }
+      ]
+    },
+    {
+      "id": "solution",
+      "name": "The Solution",
+      "duration": 3,
+      "background": "linear-gradient(180deg, #0f0f0f, #1a1a2e)",
+      "elements": [
+        {
+          "type": "text",
+          "x": 10,
+          "y": 15,
+          "width": 80,
+          "text": "THE SOLUTION",
+          "color": "#4ecdc4",
+          "fontSize": 24,
+          "fontWeight": "600",
+          "fontFamily": "Arial, sans-serif",
+          "letterSpacing": 6,
+          "animation": { "type": "fadeIn", "duration": 0.5 }
+        },
+        {
+          "type": "text",
+          "x": 10,
+          "y": 30,
+          "width": 80,
+          "text": "AI-Powered Video Creation",
+          "color": "#ffffff",
+          "fontSize": 48,
+          "fontWeight": "bold",
+          "fontFamily": "Arial, sans-serif",
+          "animation": { "type": "slideInRight", "duration": 0.6, "delay": 0.3, "easing": "easeOut" }
+        },
+        {
+          "type": "circle",
+          "x": 70,
+          "y": 60,
+          "width": 20,
+          "height": 20,
+          "color": "rgba(78, 205, 196, 0.2)",
+          "animation": { "type": "pulse", "duration": 2, "delay": 0.5 }
+        },
+        {
+          "type": "text",
+          "x": 10,
+          "y": 55,
+          "width": 55,
+          "text": "Create professional videos in minutes, not hours.",
+          "color": "rgba(255,255,255,0.7)",
+          "fontSize": 20,
+          "fontFamily": "Arial, sans-serif",
+          "animation": { "type": "fadeIn", "duration": 0.5, "delay": 0.6 }
+        }
+      ]
+    },
+    {
+      "id": "benefits",
+      "name": "Benefits",
+      "duration": 3,
+      "background": "#0f0f0f",
+      "elements": [
+        {
+          "type": "text",
+          "x": 10,
+          "y": 10,
+          "width": 80,
+          "text": "BENEFITS",
+          "color": "rgba(255,255,255,0.4)",
+          "fontSize": 20,
+          "fontWeight": "600",
+          "fontFamily": "Arial, sans-serif",
+          "letterSpacing": 4,
+          "animation": { "type": "fadeIn", "duration": 0.4 }
+        },
+        {
+          "type": "rect",
+          "x": 5,
+          "y": 25,
+          "width": 27,
+          "height": 35,
+          "color": "#1a1a2e",
+          "borderRadius": 8,
+          "animation": { "type": "scaleIn", "duration": 0.4, "delay": 0.2 }
+        },
+        {
+          "type": "text",
+          "x": 7,
+          "y": 30,
+          "width": 23,
+          "text": "10x Faster",
+          "color": "#6c63ff",
+          "fontSize": 24,
+          "fontWeight": "bold",
+          "fontFamily": "Arial, sans-serif",
+          "animation": { "type": "fadeIn", "duration": 0.3, "delay": 0.4 }
+        },
+        {
+          "type": "rect",
+          "x": 36,
+          "y": 25,
+          "width": 27,
+          "height": 35,
+          "color": "#1a1a2e",
+          "borderRadius": 8,
+          "animation": { "type": "scaleIn", "duration": 0.4, "delay": 0.4 }
+        },
+        {
+          "type": "text",
+          "x": 38,
+          "y": 30,
+          "width": 23,
+          "text": "50% Less Cost",
+          "color": "#ff6b6b",
+          "fontSize": 24,
+          "fontWeight": "bold",
+          "fontFamily": "Arial, sans-serif",
+          "animation": { "type": "fadeIn", "duration": 0.3, "delay": 0.6 }
+        },
+        {
+          "type": "rect",
+          "x": 67,
+          "y": 25,
+          "width": 27,
+          "height": 35,
+          "color": "#1a1a2e",
+          "borderRadius": 8,
+          "animation": { "type": "scaleIn", "duration": 0.4, "delay": 0.6 }
+        },
+        {
+          "type": "text",
+          "x": 69,
+          "y": 30,
+          "width": 23,
+          "text": "Pro Quality",
+          "color": "#4ecdc4",
+          "fontSize": 24,
+          "fontWeight": "bold",
+          "fontFamily": "Arial, sans-serif",
+          "animation": { "type": "fadeIn", "duration": 0.3, "delay": 0.8 }
+        }
+      ]
+    },
+    {
+      "id": "cta",
+      "name": "Call to Action",
+      "duration": 2,
+      "background": "linear-gradient(135deg, #6c63ff, #3f3d99)",
+      "elements": [
+        {
+          "type": "text",
+          "x": 10,
+          "y": 30,
+          "width": 80,
+          "text": "Start Creating Today",
+          "color": "#ffffff",
+          "fontSize": 56,
+          "fontWeight": "bold",
+          "fontFamily": "Arial, sans-serif",
+          "animation": { "type": "scaleIn", "duration": 0.5, "easing": "spring" }
+        },
+        {
+          "type": "rect",
+          "x": 30,
+          "y": 55,
+          "width": 40,
+          "height": 10,
+          "color": "#ffffff",
+          "borderRadius": 50,
+          "animation": { "type": "fadeIn", "duration": 0.4, "delay": 0.4 }
+        },
+        {
+          "type": "text",
+          "x": 30,
+          "y": 56,
+          "width": 40,
+          "text": "Try Free →",
+          "color": "#6c63ff",
+          "fontSize": 22,
+          "fontWeight": "bold",
+          "fontFamily": "Arial, sans-serif",
+          "animation": { "type": "fadeIn", "duration": 0.4, "delay": 0.5 }
+        }
+      ]
+    }
+  ],
+  "audio": {
+    "bgm": "corporate",
+    "volume": 0.5
+  }
+}

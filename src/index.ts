@@ -25,6 +25,7 @@ import { createBrandKitTool } from "./tools/brand-kit";
 import { createBatchVariationsTool } from "./tools/batch-variations";
 import { createAutoCaptionTool } from "./tools/auto-caption";
 import { createSceneConsistencyTool } from "./tools/scene-consistency";
+import { createCharacterConsistencyTool } from "./tools/character-consistency";
 import { createMotionGraphicsTool } from "./tools/motion-graphics";
 
 export default function brandlyPlugin({
@@ -59,6 +60,7 @@ export default function brandlyPlugin({
     createBatchVariationsTool(ctx),
     createAutoCaptionTool(ctx),
     createSceneConsistencyTool(ctx),
+    createCharacterConsistencyTool(ctx),
     createMotionGraphicsTool(ctx),
   ];
 

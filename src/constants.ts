@@ -8,7 +8,7 @@ export function isValidProjectId(id: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89abAB][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
 }
 
-export type VideoStyle = "cinematic" | "ugc" | "montage" | "multi_shot" | "continuous" | "unboxing" | "lifestyle";
+export type VideoStyle = "cinematic" | "ugc" | "montage" | "multi_shot" | "continuous" | "unboxing" | "lifestyle" | "collage_motion_graphic" | "brand_short_video" | "explainer_video";
 
 export const VIDEO_STYLES: VideoStyle[] = [
   "cinematic",
@@ -18,6 +18,9 @@ export const VIDEO_STYLES: VideoStyle[] = [
   "continuous",
   "unboxing",
   "lifestyle",
+  "collage_motion_graphic",
+  "brand_short_video",
+  "explainer_video",
 ];
 
 export const STYLE_COSTS: Record<VideoStyle, number> = {
@@ -28,6 +31,9 @@ export const STYLE_COSTS: Record<VideoStyle, number> = {
   continuous: 200,
   unboxing: 180,
   lifestyle: 170,
+  collage_motion_graphic: 350,
+  brand_short_video: 280,
+  explainer_video: 400,
 };
 
 export const SHOT_COSTS: Record<number, number> = {

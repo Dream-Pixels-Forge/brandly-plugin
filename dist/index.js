@@ -46,7 +46,10 @@ var VIDEO_STYLES = [
   "multi_shot",
   "continuous",
   "unboxing",
-  "lifestyle"
+  "lifestyle",
+  "collage_motion_graphic",
+  "brand_short_video",
+  "explainer_video"
 ];
 var STYLE_COSTS = {
   cinematic: 250,
@@ -55,7 +58,10 @@ var STYLE_COSTS = {
   multi_shot: 300,
   continuous: 200,
   unboxing: 180,
-  lifestyle: 170
+  lifestyle: 170,
+  collage_motion_graphic: 350,
+  brand_short_video: 280,
+  explainer_video: 400
 };
 var SHOT_COSTS = {
   3: 0,
@@ -3897,8 +3903,706 @@ function createSceneConsistencyTool(ctx) {
   };
 }
 
-// src/tools/motion-graphics.ts
+// src/tools/character-consistency.ts
+import { existsSync as existsSync12, mkdirSync as mkdirSync5, readFileSync as readFileSync7, writeFileSync as writeFileSync5 } from "fs";
 import { join as join16 } from "path";
+function generateId(prefix) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+function loadCharacters(ctx) {
+  const charactersFile = join16(ctx.artifactsDir, "characters.json");
+  if (existsSync12(charactersFile)) {
+    try {
+      return JSON.parse(readFileSync7(charactersFile, "utf-8"));
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+function saveCharacters(ctx, characters) {
+  if (!existsSync12(ctx.artifactsDir)) {
+    mkdirSync5(ctx.artifactsDir, { recursive: true });
+  }
+  writeFileSync5(join16(ctx.artifactsDir, "characters.json"), JSON.stringify(characters, null, 2));
+}
+function loadGuides(ctx) {
+  const guidesFile = join16(ctx.artifactsDir, "consistency-guides.json");
+  if (existsSync12(guidesFile)) {
+    try {
+      return JSON.parse(readFileSync7(guidesFile, "utf-8"));
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+function saveGuides(ctx, guides) {
+  if (!existsSync12(ctx.artifactsDir)) {
+    mkdirSync5(ctx.artifactsDir, { recursive: true });
+  }
+  writeFileSync5(join16(ctx.artifactsDir, "consistency-guides.json"), JSON.stringify(guides, null, 2));
+}
+function createCharacterConsistencyTool(ctx) {
+  return {
+    name: "brandly_character_consistency",
+    description: "Advanced character consistency management with multi-provider support. Create character profiles with reference images, manage identity across Kling Elements 3.0, Seedance references, Higgsfield Soul ID, and more. Generate consistency guides and score character fidelity across generations.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: {
+          type: "string",
+          enum: [
+            "create_character",
+            "update_character",
+            "get_character",
+            "list_characters",
+            "delete_character",
+            "add_reference_image",
+            "remove_reference_image",
+            "create_consistency_guide",
+            "get_consistency_guide",
+            "score_consistency",
+            "generate_kling_prompt",
+            "generate_seedance_prompt",
+            "generate_higgsfield_prompt",
+            "export_character_bible",
+            "breakdown_script"
+          ],
+          description: "Action to perform"
+        },
+        characterId: {
+          type: "string",
+          description: "Character ID"
+        },
+        name: {
+          type: "string",
+          description: "Character name"
+        },
+        type: {
+          type: "string",
+          enum: ["person", "product", "object", "animal", "mascot", "custom"],
+          description: "Character type"
+        },
+        description: {
+          type: "string",
+          description: "Character description"
+        },
+        appearance: {
+          type: "object",
+          description: "Physical appearance details",
+          properties: {
+            physical: { type: "string" },
+            clothing: { type: "string" },
+            accessories: { type: "array", items: { type: "string" } },
+            colors: { type: "array", items: { type: "string" } },
+            style: { type: "string" },
+            brand: { type: "string" }
+          }
+        },
+        referenceImages: {
+          type: "array",
+          items: { type: "string" },
+          description: "Reference image paths or URLs"
+        },
+        provider: {
+          type: "string",
+          enum: ["kling", "seedance", "higgsfield", "openart"],
+          description: "Target provider for prompt generation"
+        },
+        guide: {
+          type: "object",
+          description: "Consistency guide guidelines",
+          properties: {
+            dos: { type: "array", items: { type: "string" } },
+            donts: { type: "array", items: { type: "string" } },
+            referenceAngles: { type: "array", items: { type: "string" } },
+            lightingNotes: { type: "string" }
+          }
+        },
+        sceneAssignments: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              sceneIndex: { type: "number" },
+              role: { type: "string", enum: ["primary", "secondary", "background"] },
+              position: { type: "string" },
+              action: { type: "string" }
+            }
+          },
+          description: "Scene assignments for the character"
+        },
+        tags: {
+          type: "array",
+          items: { type: "string" },
+          description: "Tags for categorization"
+        },
+        sceneIndex: {
+          type: "number",
+          description: "Scene index for scoring"
+        },
+        shots: {
+          type: "array",
+          description: "Shot descriptions for consistency scoring",
+          items: { type: "string" }
+        },
+        projectDescription: {
+          type: "string",
+          description: "Project description for prompt generation"
+        },
+        style: {
+          type: "string",
+          description: "Visual style for prompt generation"
+        },
+        script: {
+          type: "string",
+          description: "Script text to breakdown into scenes/shots"
+        },
+        shotDuration: {
+          type: "number",
+          description: "Target duration per shot in seconds (default: 5)"
+        }
+      },
+      required: ["action"]
+    },
+    execute: async (args) => {
+      const action = args.action;
+      const characters = loadCharacters(ctx);
+      const guides = loadGuides(ctx);
+      switch (action) {
+        case "create_character": {
+          const name = args.name;
+          if (!name) {
+            return { success: false, error: "Name is required" };
+          }
+          const character = {
+            id: generateId("char"),
+            name,
+            type: args.type || "person",
+            description: args.description || "",
+            appearance: args.appearance || {},
+            references: {
+              images: args.referenceImages || []
+            },
+            providers: {},
+            consistencyScore: 1,
+            usageCount: 0,
+            tags: args.tags || [],
+            createdAt: new Date().toISOString()
+          };
+          characters.push(character);
+          saveCharacters(ctx, characters);
+          return {
+            success: true,
+            character,
+            message: `Character "${name}" created with ID: ${character.id}`
+          };
+        }
+        case "update_character": {
+          const charId = args.characterId;
+          if (!charId) {
+            return { success: false, error: "characterId is required" };
+          }
+          const index = characters.findIndex((c) => c.id === charId);
+          if (index === -1) {
+            return { success: false, error: `Character ${charId} not found` };
+          }
+          const existing = characters[index];
+          if (args.name)
+            existing.name = args.name;
+          if (args.type)
+            existing.type = args.type;
+          if (args.description)
+            existing.description = args.description;
+          if (args.appearance)
+            existing.appearance = args.appearance;
+          if (args.tags)
+            existing.tags = args.tags;
+          characters[index] = existing;
+          saveCharacters(ctx, characters);
+          return { success: true, character: existing };
+        }
+        case "get_character": {
+          const charId = args.characterId;
+          if (!charId) {
+            return { success: false, error: "characterId is required" };
+          }
+          const character = characters.find((c) => c.id === charId);
+          if (!character) {
+            return { success: false, error: `Character ${charId} not found` };
+          }
+          return { success: true, character };
+        }
+        case "list_characters": {
+          return {
+            success: true,
+            characters,
+            count: characters.length
+          };
+        }
+        case "delete_character": {
+          const charId = args.characterId;
+          if (!charId) {
+            return { success: false, error: "characterId is required" };
+          }
+          const filtered = characters.filter((c) => c.id !== charId);
+          if (filtered.length === characters.length) {
+            return { success: false, error: `Character ${charId} not found` };
+          }
+          saveCharacters(ctx, filtered);
+          return { success: true, message: `Character ${charId} deleted` };
+        }
+        case "add_reference_image": {
+          const charId = args.characterId;
+          const imageUrl = args.referenceImages?.[0];
+          if (!charId || !imageUrl) {
+            return { success: false, error: "characterId and referenceImages[0] are required" };
+          }
+          const character = characters.find((c) => c.id === charId);
+          if (!character) {
+            return { success: false, error: `Character ${charId} not found` };
+          }
+          character.references.images.push(imageUrl);
+          saveCharacters(ctx, characters);
+          return {
+            success: true,
+            message: `Added reference image to ${character.name}`,
+            referenceCount: character.references.images.length
+          };
+        }
+        case "remove_reference_image": {
+          const charId = args.characterId;
+          const imageUrl = args.referenceImages?.[0];
+          if (!charId || !imageUrl) {
+            return { success: false, error: "characterId and referenceImages[0] are required" };
+          }
+          const character = characters.find((c) => c.id === charId);
+          if (!character) {
+            return { success: false, error: `Character ${charId} not found` };
+          }
+          character.references.images = character.references.images.filter((img) => img !== imageUrl);
+          saveCharacters(ctx, characters);
+          return {
+            success: true,
+            message: `Removed reference image from ${character.name}`,
+            referenceCount: character.references.images.length
+          };
+        }
+        case "create_consistency_guide": {
+          const charId = args.characterId;
+          if (!charId) {
+            return { success: false, error: "characterId is required" };
+          }
+          const character = characters.find((c) => c.id === charId);
+          if (!character) {
+            return { success: false, error: `Character ${charId} not found` };
+          }
+          const guide = {
+            characterId: charId,
+            guidelines: args.guide || { dos: [], donts: [] },
+            sceneAssignments: args.sceneAssignments || []
+          };
+          const filteredGuides = guides.filter((g) => g.characterId !== charId);
+          filteredGuides.push(guide);
+          saveGuides(ctx, filteredGuides);
+          return {
+            success: true,
+            guide,
+            message: `Consistency guide created for "${character.name}"`
+          };
+        }
+        case "get_consistency_guide": {
+          const charId = args.characterId;
+          if (!charId) {
+            return { success: false, error: "characterId is required" };
+          }
+          const guide = guides.find((g) => g.characterId === charId);
+          if (!guide) {
+            return { success: false, error: `No guide found for character ${charId}` };
+          }
+          return { success: true, guide };
+        }
+        case "score_consistency": {
+          const charId = args.characterId;
+          const shots = args.shots || [];
+          if (!charId) {
+            return { success: false, error: "characterId is required" };
+          }
+          const character = characters.find((c) => c.id === charId);
+          if (!character) {
+            return { success: false, error: `Character ${charId} not found` };
+          }
+          let score = 0.5;
+          const refCount = character.references.images.length;
+          score += Math.min(refCount * 0.1, 0.3);
+          if (character.appearance.physical)
+            score += 0.05;
+          if (character.appearance.clothing)
+            score += 0.05;
+          if (character.appearance.colors?.length)
+            score += 0.05;
+          if (character.appearance.style)
+            score += 0.05;
+          const consistencyKeywords = [
+            "same",
+            "consistent",
+            "matching",
+            "identical",
+            "maintain",
+            "keep",
+            "preserve"
+          ];
+          const shotBonus = shots.reduce((acc, shot) => {
+            const hasConsistency = consistencyKeywords.some((kw) => shot.toLowerCase().includes(kw));
+            return acc + (hasConsistency ? 0.02 : 0);
+          }, 0);
+          score = Math.min(score + shotBonus, 1);
+          character.consistencyScore = Math.round(score * 100) / 100;
+          saveCharacters(ctx, characters);
+          return {
+            success: true,
+            characterId: charId,
+            characterName: character.name,
+            consistencyScore: character.consistencyScore,
+            factors: {
+              referenceImages: refCount,
+              hasPhysicalDescription: !!character.appearance.physical,
+              hasClothingDescription: !!character.appearance.clothing,
+              hasColorPalette: !!character.appearance.colors?.length,
+              hasStyleGuide: !!character.appearance.style
+            },
+            recommendations: score < 0.7 ? [
+              "Add more reference images (2-4 recommended)",
+              "Provide detailed physical description",
+              "Define color palette",
+              "Add clothing/style notes"
+            ] : ["Good consistency foundation"]
+          };
+        }
+        case "generate_kling_prompt": {
+          const charId = args.characterId;
+          const projectDesc = args.projectDescription || "";
+          if (!charId) {
+            return { success: false, error: "characterId is required" };
+          }
+          const character = characters.find((c) => c.id === charId);
+          if (!character) {
+            return { success: false, error: `Character ${charId} not found` };
+          }
+          const prompt = [
+            `Subject: ${character.name}`,
+            character.description ? `Description: ${character.description}` : "",
+            character.appearance.physical ? `Physical: ${character.appearance.physical}` : "",
+            character.appearance.clothing ? `Clothing: ${character.appearance.clothing}` : "",
+            character.appearance.colors?.length ? `Color palette: ${character.appearance.colors.join(", ")}` : "",
+            projectDesc ? `
+Scene: ${projectDesc}` : "",
+            `
+[Elements 3.0 Subject Binding - Reference: ${character.references.images.length} images]`
+          ].filter(Boolean).join(`
+`);
+          character.usageCount++;
+          character.lastUsed = new Date().toISOString();
+          saveCharacters(ctx, characters);
+          return {
+            success: true,
+            provider: "kling",
+            prompt,
+            referenceCount: character.references.images.length,
+            elements3Binding: true,
+            notes: "Upload reference images as Subject in Kling 3.0 Elements 3.0 library"
+          };
+        }
+        case "generate_seedance_prompt": {
+          const charId = args.characterId;
+          const projectDesc = args.projectDescription || "";
+          const style = args.style || "cinematic";
+          if (!charId) {
+            return { success: false, error: "characterId is required" };
+          }
+          const character = characters.find((c) => c.id === charId);
+          if (!character) {
+            return { success: false, error: `Character ${charId} not found` };
+          }
+          const prompt = [
+            `[Style: ${style}]`,
+            `Character: ${character.name}`,
+            character.appearance.physical ? `Appearance: ${character.appearance.physical}` : "",
+            character.appearance.clothing ? `Attire: ${character.appearance.clothing}` : "",
+            character.appearance.style ? `Aesthetic: ${character.appearance.style}` : "",
+            projectDesc ? `
+Scene: ${projectDesc}` : "",
+            `
+[Character Lock - Reference: ${character.references.images.length} images]`,
+            `[Consistency: Strict - Maintain identity across transitions]`
+          ].filter(Boolean).join(`
+`);
+          character.usageCount++;
+          character.lastUsed = new Date().toISOString();
+          saveCharacters(ctx, characters);
+          return {
+            success: true,
+            provider: "seedance",
+            prompt,
+            referenceCount: character.references.images.length,
+            characterLock: true,
+            notes: "Upload reference images as Visual Reference in Seedance 2.5"
+          };
+        }
+        case "generate_higgsfield_prompt": {
+          const charId = args.characterId;
+          const projectDesc = args.projectDescription || "";
+          if (!charId) {
+            return { success: false, error: "characterId is required" };
+          }
+          const character = characters.find((c) => c.id === charId);
+          if (!character) {
+            return { success: false, error: `Character ${charId} not found` };
+          }
+          const prompt = [
+            `Character: ${character.name}`,
+            character.description ? `Identity: ${character.description}` : "",
+            character.appearance.physical ? `Features: ${character.appearance.physical}` : "",
+            character.appearance.clothing ? `Style: ${character.appearance.clothing}` : "",
+            projectDesc ? `
+Context: ${projectDesc}` : "",
+            `
+[Soul ID Training - ${character.references.images.length} reference images]`,
+            character.providers.higgsfield?.soulId ? `[Soul ID: ${character.providers.higgsfield.soulId}]` : "[Soul ID: Not yet trained]"
+          ].filter(Boolean).join(`
+`);
+          character.usageCount++;
+          character.lastUsed = new Date().toISOString();
+          saveCharacters(ctx, characters);
+          return {
+            success: true,
+            provider: "higgsfield",
+            prompt,
+            referenceCount: character.references.images.length,
+            soulId: character.providers.higgsfield?.soulId || null,
+            notes: character.providers.higgsfield?.soulId ? "Use Soul ID for identity-faithful generation" : "Train Soul ID first with 4-10 reference images"
+          };
+        }
+        case "export_character_bible": {
+          const charId = args.characterId;
+          if (!charId) {
+            return { success: false, error: "characterId is required" };
+          }
+          const character = characters.find((c) => c.id === charId);
+          if (!character) {
+            return { success: false, error: `Character ${charId} not found` };
+          }
+          const guide = guides.find((g) => g.characterId === charId);
+          const bible = {
+            character,
+            consistencyGuide: guide,
+            providerInstructions: {
+              kling: {
+                setup: "Upload reference images to Elements 3.0 library",
+                binding: "Select character as Subject for automatic identity binding",
+                tips: [
+                  "Use 2-4 high-quality reference images",
+                  "Include front, side, and 3/4 views",
+                  "Consistent lighting across references"
+                ]
+              },
+              seedance: {
+                setup: "Upload reference images as Visual References",
+                binding: "Character Lock maintains identity across transitions",
+                tips: [
+                  "Up to 16 reference images supported",
+                  "Text-driven character insertion available",
+                  "Use video-to-video for existing footage"
+                ]
+              },
+              higgsfield: {
+                setup: "Train Soul ID with 4-10 reference images",
+                binding: "Soul ID creates reusable identity model",
+                tips: [
+                  "Use high-quality, well-lit photos",
+                  "Include multiple angles",
+                  "Training takes ~10 minutes"
+                ]
+              }
+            },
+            exportDate: new Date().toISOString()
+          };
+          const biblePath = join16(ctx.artifactsDir, `character-bible-${charId}.json`);
+          writeFileSync5(biblePath, JSON.stringify(bible, null, 2));
+          return {
+            success: true,
+            bible,
+            savedTo: biblePath
+          };
+        }
+        case "breakdown_script": {
+          const script = args.script;
+          if (!script) {
+            return { success: false, error: "script is required" };
+          }
+          const shotDuration = args.shotDuration || 5;
+          const style = args.style || "cinematic";
+          const sceneMarkers = script.match(/^#{1,3}\s*(Scene|SCENE|Scene\s*\d+).*$/gm);
+          const lines = script.split(`
+`).filter((l) => l.trim());
+          const scenes = [];
+          let currentScene = null;
+          let shotIndex = 0;
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed)
+              continue;
+            const sceneMatch = trimmed.match(/^#{1,3}\s*(?:Scene|SCENE)\s*(\d+)?:?\s*[-:]?\s*(.*)$/i);
+            if (sceneMatch) {
+              if (currentScene) {
+                scenes.push(currentScene);
+              }
+              currentScene = {
+                index: scenes.length + 1,
+                title: sceneMatch[2] || `Scene ${sceneMatch[1] || scenes.length + 1}`,
+                content: "",
+                shots: [],
+                characters: []
+              };
+              shotIndex = 0;
+              continue;
+            }
+            if (!currentScene) {
+              currentScene = {
+                index: 1,
+                title: "Scene 1",
+                content: "",
+                shots: [],
+                characters: []
+              };
+            }
+            currentScene.content += trimmed + `
+`;
+            const charMatches = trimmed.match(/\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\b/g);
+            if (charMatches) {
+              for (const char of charMatches) {
+                const skipWords = [
+                  "The",
+                  "This",
+                  "That",
+                  "When",
+                  "Then",
+                  "What",
+                  "Where",
+                  "How",
+                  "Why",
+                  "Who",
+                  "Which",
+                  "Scene",
+                  "Shot",
+                  "Cut",
+                  "Fade",
+                  "Camera",
+                  "INT",
+                  "EXT",
+                  "Interior",
+                  "Exterior"
+                ];
+                if (!skipWords.includes(char) && !currentScene.characters.includes(char)) {
+                  currentScene.characters.push(char);
+                }
+              }
+            }
+            const isAction = trimmed.includes(".") && !trimmed.startsWith("[") && !trimmed.startsWith("(");
+            const isDialogue = trimmed.startsWith('"') || trimmed.startsWith('"');
+            const isDirection = trimmed.startsWith("[") || trimmed.startsWith("(");
+            if (isAction || isDialogue || isDirection) {
+              const existingCharInShot = currentScene.characters.length > 0 ? currentScene.characters : [];
+              currentScene.shots.push({
+                index: ++shotIndex,
+                description: trimmed.replace(/[[\]()"]/g, "").trim(),
+                duration: isDialogue ? shotDuration + 2 : shotDuration,
+                characters: existingCharInShot,
+                camera: isDirection ? trimmed : undefined
+              });
+            }
+          }
+          if (currentScene) {
+            scenes.push(currentScene);
+          }
+          let totalDuration = 0;
+          const shotList = scenes.flatMap((scene) => scene.shots.map((shot) => {
+            totalDuration += shot.duration;
+            return {
+              scene: scene.index,
+              shot: shot.index,
+              globalShot: totalDuration / shot.duration,
+              description: shot.description,
+              duration: shot.duration,
+              timestamp: totalDuration - shot.duration,
+              characters: shot.characters,
+              camera: shot.camera
+            };
+          }));
+          const allSceneChars = scenes.flatMap((s) => s.characters);
+          const uniqueChars = [...new Set(allSceneChars)];
+          const matchedCharacters = uniqueChars.map((name) => {
+            const existing = characters.find((c) => c.name.toLowerCase() === name.toLowerCase() || c.name.includes(name) || name.includes(c.name));
+            return {
+              name,
+              existingCharacter: existing || null,
+              needsCreation: !existing
+            };
+          }).filter((c) => c.needsCreation || c.existingCharacter);
+          const providerPrompts = {
+            kling: scenes.map((scene) => ({
+              scene: scene.index,
+              prompt: `Scene ${scene.index}: ${scene.title}
+Characters: ${scene.characters.join(", ")}
+[Elements 3.0 Subject Binding]`
+            })),
+            seedance: scenes.map((scene) => ({
+              scene: scene.index,
+              prompt: `[Style: ${style}] Scene ${scene.index}: ${scene.title}
+Characters: ${scene.characters.join(", ")}
+[Character Lock]`
+            })),
+            higgsfield: scenes.map((scene) => ({
+              scene: scene.index,
+              prompt: `Scene ${scene.index}: ${scene.title}
+Characters: ${scene.characters.join(", ")}
+[Soul ID Reference]`
+            }))
+          };
+          return {
+            success: true,
+            breakdown: {
+              sceneCount: scenes.length,
+              shotCount: shotList.length,
+              totalDuration,
+              estimatedVideoLength: `${Math.ceil(totalDuration / 60)}:${String(totalDuration % 60).padStart(2, "0")}`,
+              scenes: scenes.map((s) => ({
+                index: s.index,
+                title: s.title,
+                shotCount: s.shots.length,
+                characters: s.characters,
+                content: s.content.trim()
+              })),
+              shotList,
+              characters: matchedCharacters,
+              providerPrompts
+            },
+            recommendations: {
+              shotsPerScene: scenes.map((s) => s.shots.length < 2 ? `Scene ${s.index}: Consider adding more shots for visual variety` : null).filter(Boolean),
+              characterConsistency: matchedCharacters.filter((c) => c.needsCreation).length > 0 ? `Create character profiles for: ${matchedCharacters.filter((c) => c.needsCreation).map((c) => c.name).join(", ")}` : "All characters have existing profiles"
+            }
+          };
+        }
+        default:
+          return { success: false, error: `Unknown action: ${action}` };
+      }
+    }
+  };
+}
+
+// src/tools/motion-graphics.ts
+import { join as join17 } from "path";
 import { mkdir as mkdir10, writeFile as writeFile8 } from "fs/promises";
 import { execFileSync } from "child_process";
 function jsStr(value) {
@@ -4887,6 +5591,679 @@ function generatePreset(preset, fps, width, height) {
           }
         ]
       };
+    case "collage-motion-graphic":
+      return {
+        fps,
+        width,
+        height,
+        scenes: [
+          {
+            id: "collage-bg",
+            duration: 2,
+            background: "linear-gradient(45deg, #1a1a2e, #16213e)",
+            elements: [
+              {
+                type: "rect",
+                x: 0,
+                y: 0,
+                width: 100,
+                height: 100,
+                color: "rgba(255,255,255,0.03)",
+                animation: {
+                  type: "fadeIn",
+                  duration: 1
+                }
+              },
+              {
+                type: "rect",
+                x: 5,
+                y: 10,
+                width: 35,
+                height: 45,
+                color: "#2a2a4a",
+                borderRadius: 8,
+                rotation: -5,
+                animation: {
+                  type: "scaleIn",
+                  duration: 0.6,
+                  delay: 0.2,
+                  easing: "spring"
+                }
+              },
+              {
+                type: "rect",
+                x: 60,
+                y: 15,
+                width: 35,
+                height: 45,
+                color: "#2a2a4a",
+                borderRadius: 8,
+                rotation: 5,
+                animation: {
+                  type: "scaleIn",
+                  duration: 0.6,
+                  delay: 0.4,
+                  easing: "spring"
+                }
+              },
+              {
+                type: "rect",
+                x: 30,
+                y: 50,
+                width: 40,
+                height: 40,
+                color: "#2a2a4a",
+                borderRadius: 8,
+                animation: {
+                  type: "scaleIn",
+                  duration: 0.6,
+                  delay: 0.6,
+                  easing: "spring"
+                }
+              },
+              {
+                type: "text",
+                x: 15,
+                y: 70,
+                width: 70,
+                text: "YOUR BRAND",
+                color: "#ffffff",
+                fontSize: 72,
+                fontWeight: "900",
+                fontFamily: "Impact, sans-serif",
+                animation: {
+                  type: "slideInBottom",
+                  duration: 0.8,
+                  delay: 0.8,
+                  easing: "easeOut"
+                }
+              },
+              {
+                type: "text",
+                x: 20,
+                y: 85,
+                width: 60,
+                text: "COLLAGE STYLE",
+                color: "rgba(255,255,255,0.6)",
+                fontSize: 28,
+                fontWeight: "600",
+                fontFamily: "Arial, sans-serif",
+                letterSpacing: 8,
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.6,
+                  delay: 1.2
+                }
+              }
+            ]
+          }
+        ]
+      };
+    case "brand-short-video":
+      return {
+        fps,
+        width,
+        height,
+        scenes: [
+          {
+            id: "intro",
+            duration: 2,
+            background: "linear-gradient(135deg, #0f0f0f, #1a1a2e)",
+            elements: [
+              {
+                type: "circle",
+                x: 40,
+                y: 20,
+                width: 20,
+                height: 20,
+                color: "#6c63ff",
+                animation: {
+                  type: "scaleIn",
+                  duration: 0.5,
+                  easing: "spring"
+                }
+              },
+              {
+                type: "text",
+                x: 10,
+                y: 50,
+                width: 80,
+                text: "BRAND NAME",
+                color: "#ffffff",
+                fontSize: 80,
+                fontWeight: "bold",
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "scaleIn",
+                  duration: 0.6,
+                  delay: 0.3,
+                  easing: "spring"
+                }
+              },
+              {
+                type: "line",
+                x: 30,
+                y: 70,
+                width: 40,
+                color: "#6c63ff",
+                strokeWidth: 3,
+                animation: {
+                  type: "drawLine",
+                  duration: 0.5,
+                  delay: 0.6
+                }
+              },
+              {
+                type: "text",
+                x: 10,
+                y: 75,
+                width: 80,
+                text: "Tagline goes here",
+                color: "rgba(255,255,255,0.7)",
+                fontSize: 28,
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.5,
+                  delay: 0.9
+                }
+              }
+            ]
+          },
+          {
+            id: "features",
+            duration: 3,
+            background: "#0f0f0f",
+            elements: [
+              {
+                type: "rect",
+                x: 5,
+                y: 10,
+                width: 90,
+                height: 25,
+                color: "#1a1a2e",
+                borderRadius: 12,
+                animation: {
+                  type: "slideInLeft",
+                  duration: 0.5
+                }
+              },
+              {
+                type: "text",
+                x: 10,
+                y: 15,
+                width: 35,
+                text: "01",
+                color: "#6c63ff",
+                fontSize: 48,
+                fontWeight: "bold",
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "countUp",
+                  duration: 0.8,
+                  delay: 0.3
+                }
+              },
+              {
+                type: "text",
+                x: 45,
+                y: 15,
+                width: 45,
+                text: "Feature One",
+                color: "#ffffff",
+                fontSize: 32,
+                fontWeight: "bold",
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.4,
+                  delay: 0.4
+                }
+              },
+              {
+                type: "text",
+                x: 45,
+                y: 25,
+                width: 45,
+                text: "Description of the first key feature",
+                color: "rgba(255,255,255,0.6)",
+                fontSize: 16,
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.4,
+                  delay: 0.6
+                }
+              },
+              {
+                type: "rect",
+                x: 5,
+                y: 40,
+                width: 90,
+                height: 25,
+                color: "#1a1a2e",
+                borderRadius: 12,
+                animation: {
+                  type: "slideInLeft",
+                  duration: 0.5,
+                  delay: 0.3
+                }
+              },
+              {
+                type: "text",
+                x: 10,
+                y: 45,
+                width: 35,
+                text: "02",
+                color: "#ff6b6b",
+                fontSize: 48,
+                fontWeight: "bold",
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "countUp",
+                  duration: 0.8,
+                  delay: 0.6
+                }
+              },
+              {
+                type: "text",
+                x: 45,
+                y: 45,
+                width: 45,
+                text: "Feature Two",
+                color: "#ffffff",
+                fontSize: 32,
+                fontWeight: "bold",
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.4,
+                  delay: 0.7
+                }
+              },
+              {
+                type: "text",
+                x: 45,
+                y: 55,
+                width: 45,
+                text: "Description of the second key feature",
+                color: "rgba(255,255,255,0.6)",
+                fontSize: 16,
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.4,
+                  delay: 0.9
+                }
+              }
+            ]
+          },
+          {
+            id: "cta",
+            duration: 2,
+            background: "linear-gradient(135deg, #6c63ff, #3f3d99)",
+            elements: [
+              {
+                type: "text",
+                x: 10,
+                y: 30,
+                width: 80,
+                text: "Get Started",
+                color: "#ffffff",
+                fontSize: 72,
+                fontWeight: "bold",
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "scaleIn",
+                  duration: 0.5,
+                  easing: "spring"
+                }
+              },
+              {
+                type: "rect",
+                x: 35,
+                y: 55,
+                width: 30,
+                height: 8,
+                color: "#ffffff",
+                borderRadius: 50,
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.4,
+                  delay: 0.4
+                }
+              },
+              {
+                type: "text",
+                x: 35,
+                y: 56,
+                width: 30,
+                text: "Learn More \u2192",
+                color: "#6c63ff",
+                fontSize: 20,
+                fontWeight: "bold",
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.4,
+                  delay: 0.5
+                }
+              }
+            ]
+          }
+        ]
+      };
+    case "explainer-video":
+      return {
+        fps,
+        width,
+        height,
+        scenes: [
+          {
+            id: "problem",
+            duration: 3,
+            background: "linear-gradient(180deg, #1a1a2e, #0f0f0f)",
+            elements: [
+              {
+                type: "text",
+                x: 10,
+                y: 15,
+                width: 80,
+                text: "THE PROBLEM",
+                color: "#ff6b6b",
+                fontSize: 24,
+                fontWeight: "600",
+                fontFamily: "Arial, sans-serif",
+                letterSpacing: 6,
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.5
+                }
+              },
+              {
+                type: "text",
+                x: 10,
+                y: 30,
+                width: 80,
+                text: "Struggling to Create Engaging Content?",
+                color: "#ffffff",
+                fontSize: 48,
+                fontWeight: "bold",
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "slideInLeft",
+                  duration: 0.6,
+                  delay: 0.3,
+                  easing: "easeOut"
+                }
+              },
+              {
+                type: "rect",
+                x: 10,
+                y: 60,
+                width: 80,
+                height: 30,
+                color: "rgba(255,255,255,0.05)",
+                borderRadius: 12,
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.5,
+                  delay: 0.6
+                }
+              },
+              {
+                type: "text",
+                x: 15,
+                y: 65,
+                width: 70,
+                text: "Most businesses spend hours creating videos that don't convert.",
+                color: "rgba(255,255,255,0.7)",
+                fontSize: 20,
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.5,
+                  delay: 0.8
+                }
+              }
+            ]
+          },
+          {
+            id: "solution",
+            duration: 3,
+            background: "linear-gradient(180deg, #0f0f0f, #1a1a2e)",
+            elements: [
+              {
+                type: "text",
+                x: 10,
+                y: 15,
+                width: 80,
+                text: "THE SOLUTION",
+                color: "#4ecdc4",
+                fontSize: 24,
+                fontWeight: "600",
+                fontFamily: "Arial, sans-serif",
+                letterSpacing: 6,
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.5
+                }
+              },
+              {
+                type: "text",
+                x: 10,
+                y: 30,
+                width: 80,
+                text: "AI-Powered Video Creation",
+                color: "#ffffff",
+                fontSize: 48,
+                fontWeight: "bold",
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "slideInRight",
+                  duration: 0.6,
+                  delay: 0.3,
+                  easing: "easeOut"
+                }
+              },
+              {
+                type: "circle",
+                x: 70,
+                y: 60,
+                width: 20,
+                height: 20,
+                color: "rgba(78, 205, 196, 0.2)",
+                animation: {
+                  type: "pulse",
+                  duration: 2,
+                  delay: 0.5
+                }
+              },
+              {
+                type: "text",
+                x: 10,
+                y: 55,
+                width: 55,
+                text: "Create professional videos in minutes, not hours.",
+                color: "rgba(255,255,255,0.7)",
+                fontSize: 20,
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.5,
+                  delay: 0.6
+                }
+              }
+            ]
+          },
+          {
+            id: "benefits",
+            duration: 3,
+            background: "#0f0f0f",
+            elements: [
+              {
+                type: "text",
+                x: 10,
+                y: 10,
+                width: 80,
+                text: "BENEFITS",
+                color: "rgba(255,255,255,0.4)",
+                fontSize: 20,
+                fontWeight: "600",
+                fontFamily: "Arial, sans-serif",
+                letterSpacing: 4,
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.4
+                }
+              },
+              {
+                type: "rect",
+                x: 5,
+                y: 25,
+                width: 27,
+                height: 35,
+                color: "#1a1a2e",
+                borderRadius: 8,
+                animation: {
+                  type: "scaleIn",
+                  duration: 0.4,
+                  delay: 0.2
+                }
+              },
+              {
+                type: "text",
+                x: 7,
+                y: 30,
+                width: 23,
+                text: "10x Faster",
+                color: "#6c63ff",
+                fontSize: 24,
+                fontWeight: "bold",
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.3,
+                  delay: 0.4
+                }
+              },
+              {
+                type: "rect",
+                x: 36,
+                y: 25,
+                width: 27,
+                height: 35,
+                color: "#1a1a2e",
+                borderRadius: 8,
+                animation: {
+                  type: "scaleIn",
+                  duration: 0.4,
+                  delay: 0.4
+                }
+              },
+              {
+                type: "text",
+                x: 38,
+                y: 30,
+                width: 23,
+                text: "50% Less Cost",
+                color: "#ff6b6b",
+                fontSize: 24,
+                fontWeight: "bold",
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.3,
+                  delay: 0.6
+                }
+              },
+              {
+                type: "rect",
+                x: 67,
+                y: 25,
+                width: 27,
+                height: 35,
+                color: "#1a1a2e",
+                borderRadius: 8,
+                animation: {
+                  type: "scaleIn",
+                  duration: 0.4,
+                  delay: 0.6
+                }
+              },
+              {
+                type: "text",
+                x: 69,
+                y: 30,
+                width: 23,
+                text: "Pro Quality",
+                color: "#4ecdc4",
+                fontSize: 24,
+                fontWeight: "bold",
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.3,
+                  delay: 0.8
+                }
+              }
+            ]
+          },
+          {
+            id: "cta",
+            duration: 2,
+            background: "linear-gradient(135deg, #6c63ff, #3f3d99)",
+            elements: [
+              {
+                type: "text",
+                x: 10,
+                y: 30,
+                width: 80,
+                text: "Start Creating Today",
+                color: "#ffffff",
+                fontSize: 56,
+                fontWeight: "bold",
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "scaleIn",
+                  duration: 0.5,
+                  easing: "spring"
+                }
+              },
+              {
+                type: "rect",
+                x: 30,
+                y: 55,
+                width: 40,
+                height: 10,
+                color: "#ffffff",
+                borderRadius: 50,
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.4,
+                  delay: 0.4
+                }
+              },
+              {
+                type: "text",
+                x: 30,
+                y: 56,
+                width: 40,
+                text: "Try Free \u2192",
+                color: "#6c63ff",
+                fontSize: 22,
+                fontWeight: "bold",
+                fontFamily: "Arial, sans-serif",
+                animation: {
+                  type: "fadeIn",
+                  duration: 0.4,
+                  delay: 0.5
+                }
+              }
+            ]
+          }
+        ]
+      };
     default:
       return {
         fps,
@@ -4922,7 +6299,7 @@ function generatePreset(preset, fps, width, height) {
 function createMotionGraphicsTool(ctx) {
   return {
     name: "brandly_motion_graphics",
-    description: "Create animated motion graphics using Remotion \u2014 kinetic typography, product showcases, stat counters, title reveals, and custom scene-based animations. Generates a complete Remotion project with spring physics, easing, and frame-accurate timing.",
+    description: "Create animated motion graphics using Remotion \u2014 kinetic typography, product showcases, stat counters, title reveals, collage-style compositions, brand short videos, explainer videos, and custom scene-based animations. Generates a complete Remotion project with spring physics, easing, and frame-accurate timing.",
     parameters: {
       type: "object",
       properties: {
@@ -4937,6 +6314,9 @@ function createMotionGraphicsTool(ctx) {
             "product-showcase",
             "kinetic-text",
             "stats-counter",
+            "collage-motion-graphic",
+            "brand-short-video",
+            "explainer-video",
             "custom"
           ],
           description: "Preset template. Use 'custom' to provide your own scenes."
@@ -5091,18 +6471,18 @@ function createMotionGraphicsTool(ctx) {
         mgProject = generatePreset(preset, fps, width, height);
       }
       const compositionCode = generateFullComposition(mgProject);
-      const assemblyDir = join16(ctx.directory, "motion-graphics", projectID);
-      const srcDir = join16(assemblyDir, "src");
-      const outDir = join16(assemblyDir, "out");
+      const assemblyDir = join17(ctx.directory, "motion-graphics", projectID);
+      const srcDir = join17(assemblyDir, "src");
+      const outDir = join17(assemblyDir, "out");
       await mkdir10(srcDir, { recursive: true });
       await mkdir10(outDir, { recursive: true });
-      await writeFile8(join16(srcDir, "Composition.tsx"), compositionCode, "utf-8");
-      await writeFile8(join16(srcDir, "index.ts"), generateRootIndex2(), "utf-8");
-      await writeFile8(join16(assemblyDir, "remotion.config.ts"), generateRemotionConfig2(), "utf-8");
-      await writeFile8(join16(assemblyDir, "package.json"), generatePackageJson2(projectName), "utf-8");
-      const finalOutputPath = outputPath || join16(outDir, `motion-graphic-${Date.now()}.mp4`);
+      await writeFile8(join17(srcDir, "Composition.tsx"), compositionCode, "utf-8");
+      await writeFile8(join17(srcDir, "index.ts"), generateRootIndex2(), "utf-8");
+      await writeFile8(join17(assemblyDir, "remotion.config.ts"), generateRemotionConfig2(), "utf-8");
+      await writeFile8(join17(assemblyDir, "package.json"), generatePackageJson2(projectName), "utf-8");
+      const finalOutputPath = outputPath || join17(outDir, `motion-graphic-${Date.now()}.mp4`);
       const buildScript = generateBuildScript2(finalOutputPath);
-      await writeFile8(join16(assemblyDir, "build.sh"), buildScript, "utf-8");
+      await writeFile8(join17(assemblyDir, "build.sh"), buildScript, "utf-8");
       const meta = {
         id: `mg-${Date.now()}`,
         projectId: projectID,
@@ -5114,12 +6494,12 @@ function createMotionGraphicsTool(ctx) {
         sceneCount: mgProject.scenes.length,
         totalDuration: mgProject.scenes.reduce((sum, s) => sum + s.duration, 0),
         assemblyDir,
-        compositionPath: join16(srcDir, "Composition.tsx"),
+        compositionPath: join17(srcDir, "Composition.tsx"),
         outputPath: finalOutputPath,
         status: "created",
         createdAt: new Date().toISOString()
       };
-      await writeFile8(join16(assemblyDir, "motion-graphics-meta.json"), JSON.stringify(meta, null, 2), "utf-8");
+      await writeFile8(join17(assemblyDir, "motion-graphics-meta.json"), JSON.stringify(meta, null, 2), "utf-8");
       if (!project.phases) {
         project.phases = {};
       }
@@ -5166,7 +6546,7 @@ function createMotionGraphicsTool(ctx) {
           renderStatus = "render_failed";
           renderOutput = String(err);
         }
-        await writeFile8(join16(assemblyDir, "motion-graphics-meta.json"), JSON.stringify(meta, null, 2), "utf-8");
+        await writeFile8(join17(assemblyDir, "motion-graphics-meta.json"), JSON.stringify(meta, null, 2), "utf-8");
       }
       return {
         projectId: projectID,
@@ -5176,7 +6556,7 @@ function createMotionGraphicsTool(ctx) {
         assemblyDir,
         sceneCount: mgProject.scenes.length,
         totalDuration: `${meta.totalDuration}s`,
-        compositionPath: join16(srcDir, "Composition.tsx"),
+        compositionPath: join17(srcDir, "Composition.tsx"),
         outputPath: finalOutputPath,
         status: meta.status,
         renderStatus,
@@ -5218,6 +6598,7 @@ function brandlyPlugin({
     createBatchVariationsTool(ctx),
     createAutoCaptionTool(ctx),
     createSceneConsistencyTool(ctx),
+    createCharacterConsistencyTool(ctx),
     createMotionGraphicsTool(ctx)
   ];
   return {

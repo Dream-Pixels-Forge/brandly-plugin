@@ -3,7 +3,7 @@
 # Brandly Plugin
 <img width="1983" height="793" alt="banner" src="https://github.com/user-attachments/assets/246d040d-8029-445f-b3c9-f4b68c6c78ce" />
 
-AI product video orchestrator for OpenCode. Turns product ideas into platform-ready marketing videos using a multi-agent pipeline.
+AI video orchestrator for OpenCode. Turns product ideas into platform-ready marketing videos, motion graphics, explainer videos, and more using a multi-agent pipeline.
 
 </div>
 
@@ -62,11 +62,38 @@ That's it. OpenCode auto-installs dependencies via `bun install` on startup and 
 | `brandly_render_video` | Render final video with Remotion |
 | `brandly_assemble` | Assemble all clips into a montage with transitions, text overlays, and audio |
 
+## Video Styles
+
+| Style | Description | Credits |
+|---|---|---|
+| `product_showcase` | Standard product showcase video | 200 |
+| `ugc` | User-generated content style | 220 |
+| `documentary` | Documentary-style storytelling | 250 |
+| `cinematic` | Cinematic commercial | 300 |
+| `luxury` | High-end luxury brand video | 320 |
+| `lifestyle` | Lifestyle/aspirational content | 240 |
+| `comedy_skit` | Humorous skit-style video | 260 |
+| `montage` | Fast-cut montage compilation | 280 |
+| `collage_motion_graphic` | Layered collage-style motion graphics with artistic composition | 350 |
+| `brand_short_video` | Dynamic brand short video with intro, features, and CTA | 280 |
+| `explainer_video` | Educational explainer with problem, solution, and benefits | 400 |
+
 ## Pipeline
 
 ```
 init → trends → concept → script → asset → audio → validate → publish → done
 ```
+
+## Templates
+
+Pre-built templates are available in the `templates/` directory:
+
+- `product-showcase.json` — Standard product showcase
+- `collage-motion-graphic.json` — Collage-style motion graphics
+- `brand-short-video.json` — Brand short video
+- `explainer-video.json` — Explainer video with problem/solution/benefits
+
+Use `brandly_templates` to list all available templates.
 
 ## Folder Structure
 

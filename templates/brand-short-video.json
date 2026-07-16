@@ -1,0 +1,203 @@
+{
+  "name": "Brand Short Video",
+  "style": "brand_short_video",
+  "description": "Dynamic brand short video with intro, features, and call-to-action sections",
+  "duration": 7,
+  "dimensions": { "width": 1080, "height": 1920 },
+  "fps": 30,
+  "scenes": [
+    {
+      "id": "intro",
+      "name": "Brand Intro",
+      "duration": 2,
+      "background": "linear-gradient(135deg, #0f0f0f, #1a1a2e)",
+      "elements": [
+        {
+          "type": "circle",
+          "x": 40,
+          "y": 20,
+          "width": 20,
+          "height": 20,
+          "color": "#6c63ff",
+          "animation": { "type": "scaleIn", "duration": 0.5, "easing": "spring" }
+        },
+        {
+          "type": "text",
+          "x": 10,
+          "y": 50,
+          "width": 80,
+          "text": "BRAND NAME",
+          "color": "#ffffff",
+          "fontSize": 80,
+          "fontWeight": "bold",
+          "fontFamily": "Arial, sans-serif",
+          "animation": { "type": "scaleIn", "duration": 0.6, "delay": 0.3, "easing": "spring" }
+        },
+        {
+          "type": "line",
+          "x": 30,
+          "y": 70,
+          "width": 40,
+          "color": "#6c63ff",
+          "strokeWidth": 3,
+          "animation": { "type": "drawLine", "duration": 0.5, "delay": 0.6 }
+        },
+        {
+          "type": "text",
+          "x": 10,
+          "y": 75,
+          "width": 80,
+          "text": "Tagline goes here",
+          "color": "rgba(255,255,255,0.7)",
+          "fontSize": 28,
+          "fontFamily": "Arial, sans-serif",
+          "animation": { "type": "fadeIn", "duration": 0.5, "delay": 0.9 }
+        }
+      ]
+    },
+    {
+      "id": "features",
+      "name": "Features",
+      "duration": 3,
+      "background": "#0f0f0f",
+      "elements": [
+        {
+          "type": "rect",
+          "x": 5,
+          "y": 10,
+          "width": 90,
+          "height": 25,
+          "color": "#1a1a2e",
+          "borderRadius": 12,
+          "animation": { "type": "slideInLeft", "duration": 0.5 }
+        },
+        {
+          "type": "text",
+          "x": 10,
+          "y": 15,
+          "width": 35,
+          "text": "01",
+          "color": "#6c63ff",
+          "fontSize": 48,
+          "fontWeight": "bold",
+          "fontFamily": "Arial, sans-serif",
+          "animation": { "type": "countUp", "duration": 0.8, "delay": 0.3 }
+        },
+        {
+          "type": "text",
+          "x": 45,
+          "y": 15,
+          "width": 45,
+          "text": "Feature One",
+          "color": "#ffffff",
+          "fontSize": 32,
+          "fontWeight": "bold",
+          "fontFamily": "Arial, sans-serif",
+          "animation": { "type": "fadeIn", "duration": 0.4, "delay": 0.4 }
+        },
+        {
+          "type": "text",
+          "x": 45,
+          "y": 25,
+          "width": 45,
+          "text": "Description of the first key feature",
+          "color": "rgba(255,255,255,0.6)",
+          "fontSize": 16,
+          "fontFamily": "Arial, sans-serif",
+          "animation": { "type": "fadeIn", "duration": 0.4, "delay": 0.6 }
+        },
+        {
+          "type": "rect",
+          "x": 5,
+          "y": 40,
+          "width": 90,
+          "height": 25,
+          "color": "#1a1a2e",
+          "borderRadius": 12,
+          "animation": { "type": "slideInLeft", "duration": 0.5, "delay": 0.3 }
+        },
+        {
+          "type": "text",
+          "x": 10,
+          "y": 45,
+          "width": 35,
+          "text": "02",
+          "color": "#ff6b6b",
+          "fontSize": 48,
+          "fontWeight": "bold",
+          "fontFamily": "Arial, sans-serif",
+          "animation": { "type": "countUp", "duration": 0.8, "delay": 0.6 }
+        },
+        {
+          "type": "text",
+          "x": 45,
+          "y": 45,
+          "width": 45,
+          "text": "Feature Two",
+          "color": "#ffffff",
+          "fontSize": 32,
+          "fontWeight": "bold",
+          "fontFamily": "Arial, sans-serif",
+          "animation": { "type": "fadeIn", "duration": 0.4, "delay": 0.7 }
+        },
+        {
+          "type": "text",
+          "x": 45,
+          "y": 55,
+          "width": 45,
+          "text": "Description of the second key feature",
+          "color": "rgba(255,255,255,0.6)",
+          "fontSize": 16,
+          "fontFamily": "Arial, sans-serif",
+          "animation": { "type": "fadeIn", "duration": 0.4, "delay": 0.9 }
+        }
+      ]
+    },
+    {
+      "id": "cta",
+      "name": "Call to Action",
+      "duration": 2,
+      "background": "linear-gradient(135deg, #6c63ff, #3f3d99)",
+      "elements": [
+        {
+          "type": "text",
+          "x": 10,
+          "y": 30,
+          "width": 80,
+          "text": "Get Started",
+          "color": "#ffffff",
+          "fontSize": 72,
+          "fontWeight": "bold",
+          "fontFamily": "Arial, sans-serif",
+          "animation": { "type": "scaleIn", "duration": 0.5, "easing": "spring" }
+        },
+        {
+          "type": "rect",
+          "x": 35,
+          "y": 55,
+          "width": 30,
+          "height": 8,
+          "color": "#ffffff",
+          "borderRadius": 50,
+          "animation": { "type": "fadeIn", "duration": 0.4, "delay": 0.4 }
+        },
+        {
+          "type": "text",
+          "x": 35,
+          "y": 56,
+          "width": 30,
+          "text": "Learn More →",
+          "color": "#6c63ff",
+          "fontSize": 20,
+          "fontWeight": "bold",
+          "fontFamily": "Arial, sans-serif",
+          "animation": { "type": "fadeIn", "duration": 0.4, "delay": 0.5 }
+        }
+      ]
+    }
+  ],
+  "audio": {
+    "bgm": "energetic",
+    "volume": 0.7
+  }
+}
