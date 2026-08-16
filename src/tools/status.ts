@@ -1,46 +1,39 @@
+import { tool } from "@opencode-ai/plugin";
 import type { ToolContext } from "../types";
 import { isValidProjectId, PHASE_ORDER, PHASE_AGENT_MAP } from "../constants";
 
 export function createStatusTool(ctx: ToolContext) {
-  return {
-    name: "brandly_status",
+  return tool({
     description:
       "Show the current status of a Brandly project — which phase it's in, budget spent, virality score, and artifacts produced.",
-    parameters: {
-      type: "object",
-      properties: {
-        projectID: {
-          type: "string",
-          description: "The project UUID",
-        },
-      },
-      required: ["projectID"],
+    args: {
+      projectID: tool.schema.string().describe("The project UUID"),
     },
-    execute: async (args: Record<string, unknown>) => {
-      const { projectID } = args;
-
-      if (!isValidProjectId(projectID as string)) {
+    async execute(args) {
+      if (!isValidProjectId(args.projectID)) {
         throw new Error("Invalid project ID format");
       }
 
-      const project = await ctx.readProject(projectID as string);
+      const project = await ctx.readProject(args.projectID);
       if (!project) {
-        throw new Error(`Project not found: ${projectID}`);
+        throw new Error(`Project not found: ${args.projectID}`);
       }
 
       return {
-        projectId: project.id,
-        name: project.name,
-        status: project.status,
-        currentPhase: project.currentPhase,
-        budget: project.budget,
-        spent: project.spent,
-        remaining: project.budget - project.spent,
-        phases: project.phases,
-        targetPlatforms: project.targetPlatforms,
-        createdAt: project.createdAt,
-        updatedAt: project.updatedAt,
+        output: JSON.stringify({
+          projectId: project.id,
+          name: project.name,
+          status: project.status,
+          currentPhase: project.currentPhase,
+          budget: project.budget,
+          spent: project.spent,
+          remaining: project.budget - project.spent,
+          phases: project.phases,
+          targetPlatforms: project.targetPlatforms,
+          createdAt: project.createdAt,
+          updatedAt: project.updatedAt,
+        }),
       };
     },
-  };
+  });
 }

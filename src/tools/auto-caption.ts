@@ -1,12 +1,12 @@
-import { Tool } from "@opencode-ai/plugin";
+import { tool } from "@opencode-ai/plugin/tool";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { ToolContext, ProjectData } from "../types";
+import type { ToolContext } from "../types";
 
 interface CaptionWord {
   word: string;
-  start: number; // ms
-  end: number; // ms
+  start: number;
+  end: number;
   confidence: number;
 }
 
@@ -288,128 +288,89 @@ export const RemotionRoot: React.FC = () => {
 `;
 }
 
-export function createAutoCaptionTool(ctx: ToolContext): Tool {
-  return {
+export function createAutoCaptionTool(ctx: ToolContext) {
+  return tool({
     name: "brandly_auto_caption",
     description:
       "Generate word-level captions/subtitles from voiceover audio. Outputs SRT file and a Remotion component that can be overlaid on the final video with word-level highlighting and animations.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        projectID: {
-          type: "string",
-          description: "Project ID",
+    args: {
+      projectID: tool.schema.string({ description: "Project ID" }),
+      audioPath: tool.schema.string({ description: "Path to voiceover audio file (relative to project directory)" }),
+      captions: tool.schema.array(
+        tool.schema.object({
+          text: tool.schema.string(),
+          start: tool.schema.number(),
+          end: tool.schema.number(),
+          words: tool.schema.array(
+            tool.schema.object({
+              word: tool.schema.string(),
+              start: tool.schema.number(),
+              end: tool.schema.number(),
+            })
+          ),
+        }),
+        { description: "Pre-generated caption segments (if available). If not provided, generates placeholder captions." }
+      ),
+      style: tool.schema.enum(["tiktok", "youtube", "cinematic", "minimal", "bold", "custom"], {
+        description: "Caption style preset",
+      }),
+      customStyle: tool.schema.object(
+        {
+          fontFamily: tool.schema.string(),
+          fontSize: tool.schema.number(),
+          fontColor: tool.schema.string(),
+          backgroundColor: tool.schema.string(),
+          backgroundOpacity: tool.schema.number(),
+          position: tool.schema.enum(["top", "center", "bottom"]),
+          alignment: tool.schema.enum(["left", "center", "right"]),
+          maxWidth: tool.schema.number(),
+          wordHighlight: tool.schema.boolean(),
+          highlightColor: tool.schema.string(),
+          animation: tool.schema.enum(["none", "fade", "pop", "typewriter"]),
         },
-        audioPath: {
-          type: "string",
-          description: "Path to voiceover audio file (relative to project directory)",
-        },
-        captions: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              text: { type: "string" },
-              start: { type: "number" },
-              end: { type: "number" },
-              words: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    word: { type: "string" },
-                    start: { type: "number" },
-                    end: { type: "number" },
-                  },
-                },
-              },
-            },
-          },
-          description: "Pre-generated caption segments (if available). If not provided, generates placeholder captions.",
-        },
-        style: {
-          type: "string",
-          enum: ["tiktok", "youtube", "cinematic", "minimal", "bold", "custom"],
-          description: "Caption style preset",
-        },
-        customStyle: {
-          type: "object",
-          properties: {
-            fontFamily: { type: "string" },
-            fontSize: { type: "number" },
-            fontColor: { type: "string" },
-            backgroundColor: { type: "string" },
-            backgroundOpacity: { type: "number" },
-            position: { type: "string", enum: ["top", "center", "bottom"] },
-            alignment: { type: "string", enum: ["left", "center", "right"] },
-            maxWidth: { type: "number" },
-            wordHighlight: { type: "boolean" },
-            highlightColor: { type: "string" },
-            animation: { type: "string", enum: ["none", "fade", "pop", "typewriter"] },
-          },
-          description: "Custom caption style (overrides preset)",
-        },
-        exportSrt: {
-          type: "boolean",
-          description: "Export SRT subtitle file",
-        },
-      },
-      required: ["projectID"],
+        { description: "Custom caption style (overrides preset)" }
+      ),
+      exportSrt: tool.schema.boolean({ description: "Export SRT subtitle file" }),
     },
-    execute: async (input: {
-      projectID: string;
-      audioPath?: string;
-      captions?: CaptionSegment[];
-      style?: string;
-      customStyle?: Partial<CaptionStyle>;
-      exportSrt?: boolean;
-    }) => {
-      const { projectID, audioPath, customStyle, exportSrt } = input;
+    execute: async (args) => {
+      const { projectID, audioPath, captions: inputCaptions, style: presetName = "tiktok", customStyle, exportSrt } = args;
 
-      // Validate project
       const projectDir = join(ctx.directory, ".brandly", "projects", projectID);
       if (!existsSync(projectDir)) {
         throw new Error(`Project ${projectID} not found`);
       }
 
-      // Build caption style
-      const presetName = input.style || "tiktok";
       const preset = CAPTION_PRESETS[presetName] || CAPTION_PRESETS.tiktok;
       const captionStyle: CaptionStyle = { ...DEFAULT_STYLE, ...preset, ...customStyle };
 
-      // Use provided captions or generate placeholders
-      let captions: CaptionSegment[] = input.captions || [
+      let captions: CaptionSegment[] = inputCaptions || [
         {
           text: "Replace with actual transcribed captions",
           start: 0,
           end: 3000,
           words: [
-            { word: "Replace", start: 0, end: 500 },
-            { word: "with", start: 500, end: 800 },
-            { word: "actual", start: 800, end: 1200 },
-            { word: "transcribed", start: 1200, end: 2000 },
-            { word: "captions", start: 2000, end: 3000 },
+            { word: "Replace", start: 0, end: 500, confidence: 1 },
+            { word: "with", start: 500, end: 800, confidence: 1 },
+            { word: "actual", start: 800, end: 1200, confidence: 1 },
+            { word: "transcribed", start: 1200, end: 2000, confidence: 1 },
+            { word: "captions", start: 2000, end: 3000, confidence: 1 },
           ],
         },
       ];
 
-      // Create captions directory
       const captionsDir = join(ctx.directory, "captions", projectID);
       mkdirSync(captionsDir, { recursive: true });
 
-      // Save caption data
       writeFileSync(
         join(captionsDir, "captions.json"),
         JSON.stringify({ captions, style: captionStyle }, null, 2)
       );
 
-      // Export SRT if requested
       if (exportSrt !== false) {
         const srt = generateCaptionSrt(captions);
         writeFileSync(join(captionsDir, "captions.srt"), srt);
       }
 
-      // Generate Remotion component
       mkdirSync(join(captionsDir, "src"), { recursive: true });
       writeFileSync(
         join(captionsDir, "src", "AutoCaption.tsx"),
@@ -427,7 +388,6 @@ registerRoot(RemotionRoot);
 `
       );
 
-      // Generate package.json
       writeFileSync(
         join(captionsDir, "package.json"),
         JSON.stringify(
@@ -456,17 +416,19 @@ registerRoot(RemotionRoot);
       );
 
       return {
-        projectID,
-        captionStyle: captionStyle,
-        captionsCount: captions.length,
-        totalDuration: captions.length > 0 ? captions[captions.length - 1].end : 0,
-        files: {
-          captionsJson: join(captionsDir, "captions.json"),
-          srt: exportSrt !== false ? join(captionsDir, "captions.srt") : null,
-          component: join(captionsDir, "src", "AutoCaption.tsx"),
-        },
-        message: `Generated ${captions.length} caption segments. Remotion component ready in ${captionsDir}`,
+        output: JSON.stringify({
+          projectID,
+          captionStyle,
+          captionsCount: captions.length,
+          totalDuration: captions.length > 0 ? captions[captions.length - 1].end : 0,
+          files: {
+            captionsJson: join(captionsDir, "captions.json"),
+            srt: exportSrt !== false ? join(captionsDir, "captions.srt") : null,
+            component: join(captionsDir, "src", "AutoCaption.tsx"),
+          },
+          message: `Generated ${captions.length} caption segments. Remotion component ready in ${captionsDir}`,
+        }),
       };
     },
-  };
+  });
 }

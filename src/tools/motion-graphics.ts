@@ -1,3 +1,4 @@
+import { tool } from "@opencode-ai/plugin/tool";
 import { join } from "node:path";
 import { mkdir, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
@@ -5,12 +6,9 @@ import { existsSync } from "node:fs";
 import type { ToolContext } from "../types";
 import { isValidProjectId } from "../constants";
 
-// Safely embed a user-supplied string as a JS string literal in generated code.
 function jsStr(value: unknown): string {
   return JSON.stringify(value ?? "");
 }
-
-// ── Types ───────────────────────────────────────────────────────────────────
 
 export interface MotionGraphicElement {
   type: "text" | "rect" | "circle" | "line" | "image";
@@ -68,117 +66,89 @@ export interface MotionGraphicProject {
   style?: string;
 }
 
-// ── Remotion code generation ────────────────────────────────────────────────
-
-function generateElementAnimation(
-  el: MotionGraphicElement,
-  elementVar: string
-): string {
+function generateElementAnimation(el: MotionGraphicElement, elementVar: string): string {
   const anim = el.animation;
   if (!anim) return "";
 
   const dur = anim.duration ?? 0.5;
   const delay = anim.delay ?? 0;
-
-  // Frame math helpers
   const startFrame = `(${delay} * fps)`;
   const endFrame = `(${delay} + ${dur}) * fps`;
 
   switch (anim.type) {
     case "fadeIn":
       return `
-    // fadeIn ${elementVar}
     const ${elementVar}_opacity = interpolate(
        frame, ${startFrame}, ${endFrame}, [0, ${el.opacity ?? 1}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
-
     case "fadeOut":
       return `
-    // fadeOut ${elementVar}
     const ${elementVar}_opacity = interpolate(
       frame, ${startFrame}, ${endFrame}, [${el.opacity ?? 1}, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
-
     case "slideInLeft":
       return `
-    // slideInLeft ${elementVar}
     const ${elementVar}_x = interpolate(
       frame, ${startFrame}, ${endFrame}, [-100, ${el.x}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
       frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
-
     case "slideInRight":
       return `
-    // slideInRight ${elementVar}
     const ${elementVar}_x = interpolate(
       frame, ${startFrame}, ${endFrame}, [110, ${el.x}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
       frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
-
     case "slideInTop":
       return `
-    // slideInTop ${elementVar}
     const ${elementVar}_y = interpolate(
       frame, ${startFrame}, ${endFrame}, [-100, ${el.y}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
       frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
-
     case "slideInBottom":
       return `
-    // slideInBottom ${elementVar}
     const ${elementVar}_y = interpolate(
       frame, ${startFrame}, ${endFrame}, [110, ${el.y}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
       frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
-
     case "scaleIn":
       return `
-    // scaleIn ${elementVar}
     const ${elementVar}_scale = interpolate(
       frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
       frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
-
     case "scaleOut":
       return `
-    // scaleOut ${elementVar}
     const ${elementVar}_scale = interpolate(
       frame, ${startFrame}, ${endFrame}, [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
       frame, ${startFrame}, ${endFrame}, [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
-
     case "rotateIn":
       return `
-    // rotateIn ${elementVar}
     const ${elementVar}_rotation = interpolate(
       frame, ${startFrame}, ${endFrame}, [-180, ${el.rotation ?? 0}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
       frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
-
     case "typewriter":
       return `
-    // typewriter ${elementVar}
     const ${elementVar}_charCount = Math.floor(
       interpolate(frame, ${startFrame}, ${endFrame}, [0, ${(el.text || "").length}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
     );`;
-
     case "bounce":
       return `
-    // bounce ${elementVar}
     const ${elementVar}_bounce = interpolate(
       frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
@@ -186,49 +156,37 @@ function generateElementAnimation(
     const ${elementVar}_opacity = interpolate(
       frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
-
     case "pulse":
       return `
-    // pulse ${elementVar}
     const ${elementVar}_pulse = Math.sin((frame - ${startFrame}) / ${dur} * fps * Math.PI * 2) * 0.5 + 0.5;
     const ${elementVar}_scale = 1 + ${elementVar}_pulse * 0.05;
     const ${elementVar}_opacity = interpolate(
        frame, ${startFrame}, ${endFrame}, [0, ${el.opacity ?? 1}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
-
     case "blurIn":
       return `
-    // blurIn ${elementVar}
     const ${elementVar}_blur = interpolate(
       frame, ${startFrame}, ${endFrame}, [20, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );
     const ${elementVar}_opacity = interpolate(
       frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
-
     case "countUp":
       return `
-    // countUp ${elementVar}
     const ${elementVar}_count = Math.floor(
        interpolate(frame, ${startFrame}, ${endFrame}, [0, ${parseInt(jsStr(el.text || "100"), 10) || 100}], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
     );`;
-
     case "drawLine":
       return `
-    // drawLine ${elementVar}
     const ${elementVar}_progress = interpolate(
       frame, ${startFrame}, ${endFrame}, [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
     );`;
-
     default:
       return "";
   }
 }
 
-function generateElementStyle(
-  el: MotionGraphicElement,
-  elementVar: string
-): string {
+function generateElementStyle(el: MotionGraphicElement, elementVar: string): string {
   const anim = el.animation?.type;
   const parts: string[] = [];
 
@@ -245,7 +203,6 @@ function generateElementStyle(
   if (el.borderRadius) parts.push(`borderRadius: ${el.borderRadius}`);
   if (el.strokeWidth) parts.push(`strokeWidth: ${el.strokeWidth}`);
 
-  // Animation-driven styles
   if (anim === "fadeIn" || anim === "fadeOut") {
     parts.push(`opacity: ${elementVar}_opacity`);
   }
@@ -262,9 +219,7 @@ function generateElementStyle(
     parts.push(`opacity: ${elementVar}_opacity`);
   }
   if (anim === "rotateIn") {
-    parts.push(
-      `transform: 'rotate(' + ${elementVar}_rotation + 'deg)'`
-    );
+    parts.push(`transform: 'rotate(' + ${elementVar}_rotation + 'deg)'`);
     parts.push(`opacity: ${elementVar}_opacity`);
   }
   if (anim === "bounce") {
@@ -289,11 +244,7 @@ function generateElementStyle(
   return `{\n          ${parts.join(",\n          ")}\n        }`;
 }
 
-function generateElementJSX(
-  el: MotionGraphicElement,
-  index: number,
-  sceneIndex: number
-): string {
+function generateElementJSX(el: MotionGraphicElement, index: number, sceneIndex: number): string {
   const tag = `el${sceneIndex}_${index}`;
   const style = generateElementStyle(el, tag);
 
@@ -302,7 +253,6 @@ function generateElementJSX(
   switch (el.type) {
     case "text": {
       if (el.animation?.type === "typewriter") {
-        // _text and _charCount are declared in generateSceneComponent
         innerJSX = `<span>{${tag}_text.slice(0, ${tag}_charCount)}</span>`;
       } else if (el.animation?.type === "countUp") {
         innerJSX = `<span>{${tag}_count}</span>`;
@@ -351,20 +301,14 @@ function generateElementJSX(
   return `<div style={${style}}>\n        ${innerJSX}\n      </div>`;
 }
 
-function generateSceneComponent(
-  scene: MotionGraphicScene,
-  sceneIndex: number,
-  fps: number
-): string {
+function generateSceneComponent(scene: MotionGraphicScene, sceneIndex: number, fps: number): string {
   const compName = `Scene_${sceneIndex}`;
   const bg = jsStr(scene.background || "#000000");
-  const durationFrames = scene.duration * fps;
 
   const elementBlocks = scene.elements
     .map((el, i) => generateElementJSX(el, i, sceneIndex))
     .join("\n\n    ");
 
-  // Collect variable declarations for elements with animations
   const animatedVars = scene.elements
     .map((el, i) => {
       if (!el.animation) return "";
@@ -374,8 +318,6 @@ function generateSceneComponent(
     .filter(Boolean)
     .join("\n");
 
-  // Hoist each text element's content to a const so special characters
-  // (&, <, >) stay inside a normal JS scope, not a JSX child.
   const textVars = scene.elements
     .map((el, i) => {
       if (el.type !== "text") return "";
@@ -386,7 +328,7 @@ function generateSceneComponent(
     .join("\n");
 
   return `
-  // ── ${compName} (${scene.duration}s) ──
+  // -- ${compName} (${scene.duration}s) --
   const ${compName} = () => {
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();
@@ -404,7 +346,6 @@ ${animatedVars}
 function generateFullComposition(project: MotionGraphicProject): string {
   const { fps, width, height, scenes } = project;
 
-  // Calculate frame ranges for each scene
   let accumulatedFrames = 0;
   const sceneRanges: { from: number; duration: number }[] = [];
   for (const scene of scenes) {
@@ -414,12 +355,10 @@ function generateFullComposition(project: MotionGraphicProject): string {
   }
   const totalFrames = accumulatedFrames;
 
-  // Scene component definitions
   const sceneComponents = scenes
     .map((s, i) => generateSceneComponent(s, i, fps))
     .join("\n");
 
-  // Sequence blocks
   const sequenceBlocks = scenes
     .map((s, i) => {
       const range = sceneRanges[i];
@@ -433,7 +372,7 @@ function generateFullComposition(project: MotionGraphicProject): string {
 
 ${sceneComponents}
 
-  // ── Main Composition ──
+  // -- Main Composition --
   const MotionGraphic = () => {
     return (
       <AbsoluteFill style={{ background: '#000' }}>
@@ -456,8 +395,6 @@ ${sequenceBlocks}
   };
 `;
 }
-
-// ── Project scaffolding ─────────────────────────────────────────────────────
 
 function generateRootIndex(): string {
   return `import { registerRoot } from "remotion";
@@ -514,24 +451,17 @@ set -e
 
 echo "🎬 Building motion graphic..."
 
-# Install dependencies if needed
 if [ ! -d "node_modules" ]; then
   echo "📦 Installing dependencies..."
   npm install
 fi
 
-# Preview in Remotion Studio
-# npm start
-
-# Render the video
 echo "🎥 Rendering video..."
 npx remotion render src/index.ts MotionGraphic "${outputPath}" --codec h264
 
 echo "✅ Build complete: ${outputPath}"
 `;
 }
-
-// ── Preset templates ────────────────────────────────────────────────────────
 
 function generatePreset(
   preset: string,
@@ -559,11 +489,7 @@ function generatePreset(
                 height: 20,
                 color: "rgba(255,255,255,0.05)",
                 borderRadius: 16,
-                animation: {
-                  type: "scaleIn",
-                  duration: 0.8,
-                  easing: "spring",
-                },
+                animation: { type: "scaleIn", duration: 0.8, easing: "spring" },
               },
               {
                 type: "text",
@@ -575,11 +501,7 @@ function generatePreset(
                 fontSize: 72,
                 fontWeight: "bold",
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "typewriter",
-                  duration: 1.5,
-                  delay: 0.3,
-                },
+                animation: { type: "typewriter", duration: 1.5, delay: 0.3 },
               },
               {
                 type: "text",
@@ -589,13 +511,8 @@ function generatePreset(
                 text: "Subtitle goes here",
                 color: "rgba(255,255,255,0.7)",
                 fontSize: 28,
-                fontWeight: "normal",
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.8,
-                  delay: 1.8,
-                },
+                animation: { type: "fadeIn", duration: 0.8, delay: 1.8 },
               },
               {
                 type: "line",
@@ -604,11 +521,7 @@ function generatePreset(
                 width: 40,
                 color: "#6c63ff",
                 strokeWidth: 3,
-                animation: {
-                  type: "drawLine",
-                  duration: 0.6,
-                  delay: 1.5,
-                },
+                animation: { type: "drawLine", duration: 0.6, delay: 1.5 },
               },
             ],
           },
@@ -633,11 +546,7 @@ function generatePreset(
                 width: 30,
                 height: 30,
                 color: "#6c63ff",
-                animation: {
-                  type: "scaleIn",
-                  duration: 0.6,
-                  easing: "spring",
-                },
+                animation: { type: "scaleIn", duration: 0.6, easing: "spring" },
               },
               {
                 type: "text",
@@ -649,11 +558,7 @@ function generatePreset(
                 fontSize: 24,
                 fontWeight: "600",
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "slideInBottom",
-                  duration: 0.5,
-                  delay: 0.3,
-                },
+                animation: { type: "slideInBottom", duration: 0.5, delay: 0.3 },
               },
               {
                 type: "text",
@@ -665,12 +570,7 @@ function generatePreset(
                 fontSize: 56,
                 fontWeight: "bold",
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "slideInBottom",
-                  duration: 0.6,
-                  delay: 0.5,
-                  easing: "easeOut",
-                },
+                animation: { type: "slideInBottom", duration: 0.6, delay: 0.5, easing: "easeOut" },
               },
             ],
           },
@@ -687,11 +587,7 @@ function generatePreset(
                 height: 35,
                 color: "#1a1a2e",
                 borderRadius: 12,
-                animation: {
-                  type: "slideInLeft",
-                  duration: 0.5,
-                  delay: 0,
-                },
+                animation: { type: "slideInLeft", duration: 0.5 },
               },
               {
                 type: "text",
@@ -703,11 +599,7 @@ function generatePreset(
                 fontSize: 28,
                 fontWeight: "bold",
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.4,
-                  delay: 0.3,
-                },
+                animation: { type: "fadeIn", duration: 0.4, delay: 0.3 },
               },
               {
                 type: "text",
@@ -718,11 +610,7 @@ function generatePreset(
                 color: "rgba(255,255,255,0.6)",
                 fontSize: 14,
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.4,
-                  delay: 0.5,
-                },
+                animation: { type: "fadeIn", duration: 0.4, delay: 0.5 },
               },
               {
                 type: "rect",
@@ -732,11 +620,7 @@ function generatePreset(
                 height: 35,
                 color: "#1a1a2e",
                 borderRadius: 12,
-                animation: {
-                  type: "slideInLeft",
-                  duration: 0.5,
-                  delay: 0.2,
-                },
+                animation: { type: "slideInLeft", duration: 0.5, delay: 0.2 },
               },
               {
                 type: "text",
@@ -748,11 +632,7 @@ function generatePreset(
                 fontSize: 28,
                 fontWeight: "bold",
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.4,
-                  delay: 0.5,
-                },
+                animation: { type: "fadeIn", duration: 0.4, delay: 0.5 },
               },
               {
                 type: "text",
@@ -763,11 +643,7 @@ function generatePreset(
                 color: "rgba(255,255,255,0.6)",
                 fontSize: 14,
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.4,
-                  delay: 0.7,
-                },
+                animation: { type: "fadeIn", duration: 0.4, delay: 0.7 },
               },
               {
                 type: "rect",
@@ -777,11 +653,7 @@ function generatePreset(
                 height: 35,
                 color: "#1a1a2e",
                 borderRadius: 12,
-                animation: {
-                  type: "slideInLeft",
-                  duration: 0.5,
-                  delay: 0.4,
-                },
+                animation: { type: "slideInLeft", duration: 0.5, delay: 0.4 },
               },
               {
                 type: "text",
@@ -793,11 +665,7 @@ function generatePreset(
                 fontSize: 28,
                 fontWeight: "bold",
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.4,
-                  delay: 0.7,
-                },
+                animation: { type: "fadeIn", duration: 0.4, delay: 0.7 },
               },
               {
                 type: "text",
@@ -808,11 +676,7 @@ function generatePreset(
                 color: "rgba(255,255,255,0.6)",
                 fontSize: 14,
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.4,
-                  delay: 0.9,
-                },
+                animation: { type: "fadeIn", duration: 0.4, delay: 0.9 },
               },
             ],
           },
@@ -831,11 +695,7 @@ function generatePreset(
                 fontSize: 64,
                 fontWeight: "bold",
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "scaleIn",
-                  duration: 0.6,
-                  easing: "spring",
-                },
+                animation: { type: "scaleIn", duration: 0.6, easing: "spring" },
               },
               {
                 type: "rect",
@@ -845,27 +705,19 @@ function generatePreset(
                 height: 10,
                 color: "#ffffff",
                 borderRadius: 50,
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.5,
-                  delay: 0.5,
-                },
+                animation: { type: "fadeIn", duration: 0.5, delay: 0.5 },
               },
               {
                 type: "text",
                 x: 30,
                 y: 56.5,
                 width: 40,
-                text: "Start Free Trial →",
+                text: "Start Free Trial",
                 color: "#6c63ff",
                 fontSize: 24,
                 fontWeight: "bold",
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.5,
-                  delay: 0.6,
-                },
+                animation: { type: "fadeIn", duration: 0.5, delay: 0.6 },
               },
             ],
           },
@@ -893,11 +745,7 @@ function generatePreset(
                 fontSize: 120,
                 fontWeight: "900",
                 fontFamily: "Impact, sans-serif",
-                animation: {
-                  type: "scaleIn",
-                  duration: 0.3,
-                  easing: "spring",
-                },
+                animation: { type: "scaleIn", duration: 0.3, easing: "spring" },
               },
             ],
           },
@@ -916,11 +764,7 @@ function generatePreset(
                 fontSize: 120,
                 fontWeight: "900",
                 fontFamily: "Impact, sans-serif",
-                animation: {
-                  type: "slideInLeft",
-                  duration: 0.3,
-                  easing: "spring",
-                },
+                animation: { type: "slideInLeft", duration: 0.3, easing: "spring" },
               },
             ],
           },
@@ -939,11 +783,7 @@ function generatePreset(
                 fontSize: 120,
                 fontWeight: "900",
                 fontFamily: "Impact, sans-serif",
-                animation: {
-                  type: "slideInRight",
-                  duration: 0.3,
-                  easing: "spring",
-                },
+                animation: { type: "slideInRight", duration: 0.3, easing: "spring" },
               },
             ],
           },
@@ -962,11 +802,7 @@ function generatePreset(
                 fontSize: 100,
                 fontWeight: "900",
                 fontFamily: "Impact, sans-serif",
-                animation: {
-                  type: "bounce",
-                  duration: 0.8,
-                  easing: "spring",
-                },
+                animation: { type: "bounce", duration: 0.8, easing: "spring" },
               },
               {
                 type: "text",
@@ -976,13 +812,8 @@ function generatePreset(
                 text: "with brandly + remotion",
                 color: "rgba(255,255,255,0.8)",
                 fontSize: 32,
-                fontWeight: "normal",
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.5,
-                  delay: 0.5,
-                },
+                animation: { type: "fadeIn", duration: 0.5, delay: 0.5 },
               },
             ],
           },
@@ -1010,11 +841,7 @@ function generatePreset(
                 fontSize: 20,
                 fontWeight: "600",
                 fontFamily: "Arial, sans-serif",
-                letterSpacing: 8,
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.5,
-                },
+                animation: { type: "fadeIn", duration: 0.5 },
               },
               {
                 type: "text",
@@ -1026,11 +853,7 @@ function generatePreset(
                 fontSize: 64,
                 fontWeight: "bold",
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "countUp",
-                  duration: 2,
-                  delay: 0.3,
-                },
+                animation: { type: "countUp", duration: 2, delay: 0.3 },
               },
               {
                 type: "text",
@@ -1041,11 +864,7 @@ function generatePreset(
                 color: "rgba(255,255,255,0.6)",
                 fontSize: 20,
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.4,
-                  delay: 0.5,
-                },
+                animation: { type: "fadeIn", duration: 0.4, delay: 0.5 },
               },
               {
                 type: "text",
@@ -1057,11 +876,7 @@ function generatePreset(
                 fontSize: 64,
                 fontWeight: "bold",
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "countUp",
-                  duration: 2,
-                  delay: 0.6,
-                },
+                animation: { type: "countUp", duration: 2, delay: 0.6 },
               },
               {
                 type: "text",
@@ -1072,11 +887,7 @@ function generatePreset(
                 color: "rgba(255,255,255,0.6)",
                 fontSize: 20,
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.4,
-                  delay: 0.8,
-                },
+                animation: { type: "fadeIn", duration: 0.4, delay: 0.8 },
               },
               {
                 type: "text",
@@ -1088,11 +899,7 @@ function generatePreset(
                 fontSize: 64,
                 fontWeight: "bold",
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "countUp",
-                  duration: 2,
-                  delay: 0.9,
-                },
+                animation: { type: "countUp", duration: 2, delay: 0.9 },
               },
               {
                 type: "text",
@@ -1103,11 +910,7 @@ function generatePreset(
                 color: "rgba(255,255,255,0.6)",
                 fontSize: 20,
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.4,
-                  delay: 1.1,
-                },
+                animation: { type: "fadeIn", duration: 0.4, delay: 1.1 },
               },
               {
                 type: "line",
@@ -1126,11 +929,7 @@ function generatePreset(
                 color: "rgba(255,255,255,0.5)",
                 fontSize: 24,
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.6,
-                  delay: 2.5,
-                },
+                animation: { type: "fadeIn", duration: 0.6, delay: 2.5 },
               },
             ],
           },
@@ -1148,7 +947,6 @@ function generatePreset(
             duration: 2,
             background: "linear-gradient(45deg, #1a1a2e, #16213e)",
             elements: [
-              // Background texture
               {
                 type: "rect",
                 x: 0,
@@ -1156,12 +954,8 @@ function generatePreset(
                 width: 100,
                 height: 100,
                 color: "rgba(255,255,255,0.03)",
-                animation: {
-                  type: "fadeIn",
-                  duration: 1,
-                },
+                animation: { type: "fadeIn", duration: 1 },
               },
-              // Layered photo frames
               {
                 type: "rect",
                 x: 5,
@@ -1171,12 +965,7 @@ function generatePreset(
                 color: "#2a2a4a",
                 borderRadius: 8,
                 rotation: -5,
-                animation: {
-                  type: "scaleIn",
-                  duration: 0.6,
-                  delay: 0.2,
-                  easing: "spring",
-                },
+                animation: { type: "scaleIn", duration: 0.6, delay: 0.2, easing: "spring" },
               },
               {
                 type: "rect",
@@ -1187,12 +976,7 @@ function generatePreset(
                 color: "#2a2a4a",
                 borderRadius: 8,
                 rotation: 5,
-                animation: {
-                  type: "scaleIn",
-                  duration: 0.6,
-                  delay: 0.4,
-                  easing: "spring",
-                },
+                animation: { type: "scaleIn", duration: 0.6, delay: 0.4, easing: "spring" },
               },
               {
                 type: "rect",
@@ -1202,14 +986,8 @@ function generatePreset(
                 height: 40,
                 color: "#2a2a4a",
                 borderRadius: 8,
-                animation: {
-                  type: "scaleIn",
-                  duration: 0.6,
-                  delay: 0.6,
-                  easing: "spring",
-                },
+                animation: { type: "scaleIn", duration: 0.6, delay: 0.6, easing: "spring" },
               },
-              // Overlapping text
               {
                 type: "text",
                 x: 15,
@@ -1220,12 +998,7 @@ function generatePreset(
                 fontSize: 72,
                 fontWeight: "900",
                 fontFamily: "Impact, sans-serif",
-                animation: {
-                  type: "slideInBottom",
-                  duration: 0.8,
-                  delay: 0.8,
-                  easing: "easeOut",
-                },
+                animation: { type: "slideInBottom", duration: 0.8, delay: 0.8, easing: "easeOut" },
               },
               {
                 type: "text",
@@ -1237,12 +1010,7 @@ function generatePreset(
                 fontSize: 28,
                 fontWeight: "600",
                 fontFamily: "Arial, sans-serif",
-                letterSpacing: 8,
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.6,
-                  delay: 1.2,
-                },
+                animation: { type: "fadeIn", duration: 0.6, delay: 1.2 },
               },
             ],
           },
@@ -1267,11 +1035,7 @@ function generatePreset(
                 width: 20,
                 height: 20,
                 color: "#6c63ff",
-                animation: {
-                  type: "scaleIn",
-                  duration: 0.5,
-                  easing: "spring",
-                },
+                animation: { type: "scaleIn", duration: 0.5, easing: "spring" },
               },
               {
                 type: "text",
@@ -1283,12 +1047,7 @@ function generatePreset(
                 fontSize: 80,
                 fontWeight: "bold",
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "scaleIn",
-                  duration: 0.6,
-                  delay: 0.3,
-                  easing: "spring",
-                },
+                animation: { type: "scaleIn", duration: 0.6, delay: 0.3, easing: "spring" },
               },
               {
                 type: "line",
@@ -1297,11 +1056,7 @@ function generatePreset(
                 width: 40,
                 color: "#6c63ff",
                 strokeWidth: 3,
-                animation: {
-                  type: "drawLine",
-                  duration: 0.5,
-                  delay: 0.6,
-                },
+                animation: { type: "drawLine", duration: 0.5, delay: 0.6 },
               },
               {
                 type: "text",
@@ -1312,11 +1067,7 @@ function generatePreset(
                 color: "rgba(255,255,255,0.7)",
                 fontSize: 28,
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.5,
-                  delay: 0.9,
-                },
+                animation: { type: "fadeIn", duration: 0.5, delay: 0.9 },
               },
             ],
           },
@@ -1333,10 +1084,7 @@ function generatePreset(
                 height: 25,
                 color: "#1a1a2e",
                 borderRadius: 12,
-                animation: {
-                  type: "slideInLeft",
-                  duration: 0.5,
-                },
+                animation: { type: "slideInLeft", duration: 0.5 },
               },
               {
                 type: "text",
@@ -1348,11 +1096,7 @@ function generatePreset(
                 fontSize: 48,
                 fontWeight: "bold",
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "countUp",
-                  duration: 0.8,
-                  delay: 0.3,
-                },
+                animation: { type: "countUp", duration: 0.8, delay: 0.3 },
               },
               {
                 type: "text",
@@ -1364,11 +1108,7 @@ function generatePreset(
                 fontSize: 32,
                 fontWeight: "bold",
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.4,
-                  delay: 0.4,
-                },
+                animation: { type: "fadeIn", duration: 0.4, delay: 0.4 },
               },
               {
                 type: "text",
@@ -1379,11 +1119,7 @@ function generatePreset(
                 color: "rgba(255,255,255,0.6)",
                 fontSize: 16,
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.4,
-                  delay: 0.6,
-                },
+                animation: { type: "fadeIn", duration: 0.4, delay: 0.6 },
               },
               {
                 type: "rect",
@@ -1393,11 +1129,7 @@ function generatePreset(
                 height: 25,
                 color: "#1a1a2e",
                 borderRadius: 12,
-                animation: {
-                  type: "slideInLeft",
-                  duration: 0.5,
-                  delay: 0.3,
-                },
+                animation: { type: "slideInLeft", duration: 0.5, delay: 0.3 },
               },
               {
                 type: "text",
@@ -1409,11 +1141,7 @@ function generatePreset(
                 fontSize: 48,
                 fontWeight: "bold",
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "countUp",
-                  duration: 0.8,
-                  delay: 0.6,
-                },
+                animation: { type: "countUp", duration: 0.8, delay: 0.6 },
               },
               {
                 type: "text",
@@ -1425,11 +1153,7 @@ function generatePreset(
                 fontSize: 32,
                 fontWeight: "bold",
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.4,
-                  delay: 0.7,
-                },
+                animation: { type: "fadeIn", duration: 0.4, delay: 0.7 },
               },
               {
                 type: "text",
@@ -1440,11 +1164,7 @@ function generatePreset(
                 color: "rgba(255,255,255,0.6)",
                 fontSize: 16,
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.4,
-                  delay: 0.9,
-                },
+                animation: { type: "fadeIn", duration: 0.4, delay: 0.9 },
               },
             ],
           },
@@ -1463,11 +1183,7 @@ function generatePreset(
                 fontSize: 72,
                 fontWeight: "bold",
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "scaleIn",
-                  duration: 0.5,
-                  easing: "spring",
-                },
+                animation: { type: "scaleIn", duration: 0.5, easing: "spring" },
               },
               {
                 type: "rect",
@@ -1477,27 +1193,19 @@ function generatePreset(
                 height: 8,
                 color: "#ffffff",
                 borderRadius: 50,
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.4,
-                  delay: 0.4,
-                },
+                animation: { type: "fadeIn", duration: 0.4, delay: 0.4 },
               },
               {
                 type: "text",
                 x: 35,
                 y: 56,
                 width: 30,
-                text: "Learn More →",
+                text: "Learn More",
                 color: "#6c63ff",
                 fontSize: 20,
                 fontWeight: "bold",
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.4,
-                  delay: 0.5,
-                },
+                animation: { type: "fadeIn", duration: 0.4, delay: 0.5 },
               },
             ],
           },
@@ -1525,11 +1233,7 @@ function generatePreset(
                 fontSize: 24,
                 fontWeight: "600",
                 fontFamily: "Arial, sans-serif",
-                letterSpacing: 6,
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.5,
-                },
+                animation: { type: "fadeIn", duration: 0.5 },
               },
               {
                 type: "text",
@@ -1541,12 +1245,7 @@ function generatePreset(
                 fontSize: 48,
                 fontWeight: "bold",
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "slideInLeft",
-                  duration: 0.6,
-                  delay: 0.3,
-                  easing: "easeOut",
-                },
+                animation: { type: "slideInLeft", duration: 0.6, delay: 0.3, easing: "easeOut" },
               },
               {
                 type: "rect",
@@ -1556,11 +1255,7 @@ function generatePreset(
                 height: 30,
                 color: "rgba(255,255,255,0.05)",
                 borderRadius: 12,
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.5,
-                  delay: 0.6,
-                },
+                animation: { type: "fadeIn", duration: 0.5, delay: 0.6 },
               },
               {
                 type: "text",
@@ -1571,11 +1266,7 @@ function generatePreset(
                 color: "rgba(255,255,255,0.7)",
                 fontSize: 20,
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.5,
-                  delay: 0.8,
-                },
+                animation: { type: "fadeIn", duration: 0.5, delay: 0.8 },
               },
             ],
           },
@@ -1594,11 +1285,7 @@ function generatePreset(
                 fontSize: 24,
                 fontWeight: "600",
                 fontFamily: "Arial, sans-serif",
-                letterSpacing: 6,
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.5,
-                },
+                animation: { type: "fadeIn", duration: 0.5 },
               },
               {
                 type: "text",
@@ -1610,12 +1297,7 @@ function generatePreset(
                 fontSize: 48,
                 fontWeight: "bold",
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "slideInRight",
-                  duration: 0.6,
-                  delay: 0.3,
-                  easing: "easeOut",
-                },
+                animation: { type: "slideInRight", duration: 0.6, delay: 0.3, easing: "easeOut" },
               },
               {
                 type: "circle",
@@ -1624,11 +1306,7 @@ function generatePreset(
                 width: 20,
                 height: 20,
                 color: "rgba(78, 205, 196, 0.2)",
-                animation: {
-                  type: "pulse",
-                  duration: 2,
-                  delay: 0.5,
-                },
+                animation: { type: "pulse", duration: 2, delay: 0.5 },
               },
               {
                 type: "text",
@@ -1639,11 +1317,7 @@ function generatePreset(
                 color: "rgba(255,255,255,0.7)",
                 fontSize: 20,
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.5,
-                  delay: 0.6,
-                },
+                animation: { type: "fadeIn", duration: 0.5, delay: 0.6 },
               },
             ],
           },
@@ -1662,11 +1336,7 @@ function generatePreset(
                 fontSize: 20,
                 fontWeight: "600",
                 fontFamily: "Arial, sans-serif",
-                letterSpacing: 4,
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.4,
-                },
+                animation: { type: "fadeIn", duration: 0.4 },
               },
               {
                 type: "rect",
@@ -1676,11 +1346,7 @@ function generatePreset(
                 height: 35,
                 color: "#1a1a2e",
                 borderRadius: 8,
-                animation: {
-                  type: "scaleIn",
-                  duration: 0.4,
-                  delay: 0.2,
-                },
+                animation: { type: "scaleIn", duration: 0.4, delay: 0.2 },
               },
               {
                 type: "text",
@@ -1692,11 +1358,7 @@ function generatePreset(
                 fontSize: 24,
                 fontWeight: "bold",
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.3,
-                  delay: 0.4,
-                },
+                animation: { type: "fadeIn", duration: 0.3, delay: 0.4 },
               },
               {
                 type: "rect",
@@ -1706,11 +1368,7 @@ function generatePreset(
                 height: 35,
                 color: "#1a1a2e",
                 borderRadius: 8,
-                animation: {
-                  type: "scaleIn",
-                  duration: 0.4,
-                  delay: 0.4,
-                },
+                animation: { type: "scaleIn", duration: 0.4, delay: 0.4 },
               },
               {
                 type: "text",
@@ -1722,11 +1380,7 @@ function generatePreset(
                 fontSize: 24,
                 fontWeight: "bold",
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.3,
-                  delay: 0.6,
-                },
+                animation: { type: "fadeIn", duration: 0.3, delay: 0.6 },
               },
               {
                 type: "rect",
@@ -1736,11 +1390,7 @@ function generatePreset(
                 height: 35,
                 color: "#1a1a2e",
                 borderRadius: 8,
-                animation: {
-                  type: "scaleIn",
-                  duration: 0.4,
-                  delay: 0.6,
-                },
+                animation: { type: "scaleIn", duration: 0.4, delay: 0.6 },
               },
               {
                 type: "text",
@@ -1752,11 +1402,7 @@ function generatePreset(
                 fontSize: 24,
                 fontWeight: "bold",
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.3,
-                  delay: 0.8,
-                },
+                animation: { type: "fadeIn", duration: 0.3, delay: 0.8 },
               },
             ],
           },
@@ -1775,11 +1421,7 @@ function generatePreset(
                 fontSize: 56,
                 fontWeight: "bold",
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "scaleIn",
-                  duration: 0.5,
-                  easing: "spring",
-                },
+                animation: { type: "scaleIn", duration: 0.5, easing: "spring" },
               },
               {
                 type: "rect",
@@ -1789,27 +1431,19 @@ function generatePreset(
                 height: 10,
                 color: "#ffffff",
                 borderRadius: 50,
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.4,
-                  delay: 0.4,
-                },
+                animation: { type: "fadeIn", duration: 0.4, delay: 0.4 },
               },
               {
                 type: "text",
                 x: 30,
                 y: 56,
                 width: 40,
-                text: "Try Free →",
+                text: "Try Free",
                 color: "#6c63ff",
                 fontSize: 22,
                 fontWeight: "bold",
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.4,
-                  delay: 0.5,
-                },
+                animation: { type: "fadeIn", duration: 0.4, delay: 0.5 },
               },
             ],
           },
@@ -1837,10 +1471,7 @@ function generatePreset(
                 fontSize: 64,
                 fontWeight: "bold",
                 fontFamily: "Arial, sans-serif",
-                animation: {
-                  type: "fadeIn",
-                  duration: 0.8,
-                },
+                animation: { type: "fadeIn", duration: 0.8 },
               },
             ],
           },
@@ -1849,182 +1480,93 @@ function generatePreset(
   }
 }
 
-// ── Tool factory ────────────────────────────────────────────────────────────
-
 export function createMotionGraphicsTool(ctx: ToolContext) {
-  return {
+  return tool({
     name: "brandly_motion_graphics",
     description:
       "Create animated motion graphics using Remotion — kinetic typography, product showcases, stat counters, title reveals, collage-style compositions, brand short videos, explainer videos, and custom scene-based animations. Generates a complete Remotion project with spring physics, easing, and frame-accurate timing.",
-    parameters: {
-      type: "object",
-      properties: {
-        projectID: {
-          type: "string",
-          description: "The project UUID",
-        },
-        preset: {
-          type: "string",
-          enum: [
-            "title-reveal",
-            "product-showcase",
-            "kinetic-text",
-            "stats-counter",
-            "collage-motion-graphic",
-            "brand-short-video",
-            "explainer-video",
-            "custom",
-          ],
-          description:
-            "Preset template. Use 'custom' to provide your own scenes.",
-        },
-        scenes: {
-          type: "array",
-          description:
-            "Custom scenes array (required when preset='custom'). Each scene has id, duration, background, and elements.",
-          items: {
-            type: "object",
-            properties: {
-              id: { type: "string" },
-              duration: { type: "number" },
-              background: { type: "string" },
-              backgroundImage: { type: "string" },
-              elements: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    type: {
-                      type: "string",
-                      enum: [
-                        "text",
-                        "rect",
-                        "circle",
-                        "line",
-                        "image",
-                      ],
-                    },
-                    id: { type: "string" },
-                    x: { type: "number" },
-                    y: { type: "number" },
-                    width: { type: "number" },
-                    height: { type: "number" },
-                    text: { type: "string" },
-                    color: { type: "string" },
-                    fontSize: { type: "number" },
-                    fontWeight: { type: "string" },
-                    fontFamily: { type: "string" },
-                    borderRadius: { type: "number" },
-                    opacity: { type: "number" },
-                    rotation: { type: "number" },
-                    strokeWidth: { type: "number" },
-                    src: { type: "string" },
-                    animation: {
-                      type: "object",
-                      properties: {
-                        type: {
-                          type: "string",
-                          enum: [
-                            "fadeIn",
-                            "fadeOut",
-                            "slideInLeft",
-                            "slideInRight",
-                            "slideInTop",
-                            "slideInBottom",
-                            "scaleIn",
-                            "scaleOut",
-                            "rotateIn",
-                            "typewriter",
-                            "bounce",
-                            "pulse",
-                            "blurIn",
-                            "countUp",
-                            "drawLine",
-                          ],
-                        },
-                        duration: { type: "number" },
-                        delay: { type: "number" },
-                        easing: {
-                          type: "string",
-                          enum: [
-                            "linear",
-                            "easeIn",
-                            "easeOut",
-                            "easeInOut",
-                            "spring",
-                          ],
-                        },
-                      },
-                    },
-                  },
-                  required: ["type", "x", "y"],
-                },
-              },
-            },
-            required: ["id", "duration", "elements"],
-          },
-        },
-        fps: {
-          type: "number",
-          default: 30,
-          description: "Frames per second",
-        },
-        width: {
-          type: "number",
-          default: 1920,
-          description: "Output width in pixels",
-        },
-        height: {
-          type: "number",
-          default: 1080,
-          description: "Output height in pixels",
-        },
-        outputPath: {
-          type: "string",
-          description: "Output file path for rendered video",
-        },
-        autoRender: {
-          type: "boolean",
-          default: false,
-          description: "Automatically render after creating the project",
-        },
-      },
-      required: ["projectID", "preset"],
+    args: {
+      projectID: tool.schema.string({ description: "The project UUID" }),
+      preset: tool.schema.enum(
+        ["title-reveal", "product-showcase", "kinetic-text", "stats-counter", "collage-motion-graphic", "brand-short-video", "explainer-video", "custom"],
+        { description: "Preset template. Use 'custom' to provide your own scenes." }
+      ),
+      scenes: tool.schema.array(
+        tool.schema.object({
+          id: tool.schema.string(),
+          duration: tool.schema.number(),
+          background: tool.schema.string(),
+          backgroundImage: tool.schema.string(),
+          elements: tool.schema.array(
+            tool.schema.object({
+              type: tool.schema.enum(["text", "rect", "circle", "line", "image"]),
+              id: tool.schema.string(),
+              x: tool.schema.number(),
+              y: tool.schema.number(),
+              width: tool.schema.number(),
+              height: tool.schema.number(),
+              text: tool.schema.string(),
+              color: tool.schema.string(),
+              fontSize: tool.schema.number(),
+              fontWeight: tool.schema.string(),
+              fontFamily: tool.schema.string(),
+              borderRadius: tool.schema.number(),
+              opacity: tool.schema.number(),
+              rotation: tool.schema.number(),
+              strokeWidth: tool.schema.number(),
+              src: tool.schema.string(),
+              animation: tool.schema.object({
+                type: tool.schema.enum([
+                  "fadeIn", "fadeOut", "slideInLeft", "slideInRight", "slideInTop",
+                  "slideInBottom", "scaleIn", "scaleOut", "rotateIn", "typewriter",
+                  "bounce", "pulse", "blurIn", "countUp", "drawLine",
+                ]),
+                duration: tool.schema.number(),
+                delay: tool.schema.number(),
+                easing: tool.schema.enum(["linear", "easeIn", "easeOut", "easeInOut", "spring"]),
+              }),
+            })
+          ),
+        }),
+        { description: "Custom scenes array (required when preset='custom')." }
+      ),
+      fps: tool.schema.number({ description: "Frames per second", default: 30 }),
+      width: tool.schema.number({ description: "Output width in pixels", default: 1920 }),
+      height: tool.schema.number({ description: "Output height in pixels", default: 1080 }),
+      outputPath: tool.schema.string({ description: "Output file path for rendered video" }),
+      autoRender: tool.schema.boolean({ description: "Automatically render after creating the project", default: false }),
     },
-    execute: async (args: Record<string, unknown>) => {
+    execute: async (args) => {
       const {
         projectID,
         preset,
         scenes,
-        fps: fpsArg,
-        width: widthArg,
-        height: heightArg,
+        fps: fpsArg = 30,
+        width: widthArg = 1920,
+        height: heightArg = 1080,
         outputPath,
-        autoRender,
+        autoRender = false,
       } = args;
 
-      if (!isValidProjectId(projectID as string)) {
+      if (!isValidProjectId(projectID)) {
         throw new Error("Invalid project ID format");
       }
 
-      const project = await ctx.readProject(projectID as string);
+      const project = await ctx.readProject(projectID);
       if (!project) {
         throw new Error(`Project not found: ${projectID}`);
       }
 
-      const fps = (fpsArg as number) || 30;
-      const width = (widthArg as number) || 1920;
-      const height = (heightArg as number) || 1080;
+      const fps = fpsArg;
+      const width = widthArg;
+      const height = heightArg;
       const projectName = project.name || `brandly-${projectID.slice(0, 8)}`;
 
-      // Build motion graphic project from preset or custom scenes
       let mgProject: MotionGraphicProject;
 
       if (preset === "custom") {
-        if (!scenes || !Array.isArray(scenes) || scenes.length === 0) {
-          throw new Error(
-            "scenes array is required when using preset='custom'"
-          );
+        if (!scenes || scenes.length === 0) {
+          throw new Error("scenes array is required when using preset='custom'");
         }
         mgProject = {
           fps,
@@ -2034,58 +1576,27 @@ export function createMotionGraphicsTool(ctx: ToolContext) {
           style: "custom",
         };
       } else {
-        mgProject = generatePreset(
-          preset as string,
-          fps,
-          width,
-          height
-        );
+        mgProject = generatePreset(preset, fps, width, height);
       }
 
-      // Generate the Remotion composition
       const compositionCode = generateFullComposition(mgProject);
 
-      // Create project directory structure
-      const assemblyDir = join(
-        ctx.directory,
-        "motion-graphics",
-        projectID as string
-      );
+      const assemblyDir = join(ctx.directory, "motion-graphics", projectID);
       const srcDir = join(assemblyDir, "src");
       const outDir = join(assemblyDir, "out");
 
       await mkdir(srcDir, { recursive: true });
       await mkdir(outDir, { recursive: true });
 
-      // Write files
-      await writeFile(
-        join(srcDir, "Composition.tsx"),
-        compositionCode,
-        "utf-8"
-      );
+      await writeFile(join(srcDir, "Composition.tsx"), compositionCode, "utf-8");
       await writeFile(join(srcDir, "index.ts"), generateRootIndex(), "utf-8");
-      await writeFile(
-        join(assemblyDir, "remotion.config.ts"),
-        generateRemotionConfig(),
-        "utf-8"
-      );
-      await writeFile(
-        join(assemblyDir, "package.json"),
-        generatePackageJson(projectName),
-        "utf-8"
-      );
+      await writeFile(join(assemblyDir, "remotion.config.ts"), generateRemotionConfig(), "utf-8");
+      await writeFile(join(assemblyDir, "package.json"), generatePackageJson(projectName), "utf-8");
 
-      const finalOutputPath =
-        outputPath ||
-        join(outDir, `motion-graphic-${Date.now()}.mp4`);
+      const finalOutputPath = outputPath || join(outDir, `motion-graphic-${Date.now()}.mp4`);
       const buildScript = generateBuildScript(finalOutputPath);
-      await writeFile(
-        join(assemblyDir, "build.sh"),
-        buildScript,
-        "utf-8"
-      );
+      await writeFile(join(assemblyDir, "build.sh"), buildScript, "utf-8");
 
-      // Save metadata
       const meta = {
         id: `mg-${Date.now()}`,
         projectId: projectID,
@@ -2095,14 +1606,11 @@ export function createMotionGraphicsTool(ctx: ToolContext) {
         width,
         height,
         sceneCount: mgProject.scenes.length,
-        totalDuration: mgProject.scenes.reduce(
-          (sum, s) => sum + s.duration,
-          0
-        ),
+        totalDuration: mgProject.scenes.reduce((sum, s) => sum + s.duration, 0),
         assemblyDir,
         compositionPath: join(srcDir, "Composition.tsx"),
         outputPath: finalOutputPath,
-        status: "created",
+        status: "created" as string,
         createdAt: new Date().toISOString(),
       };
 
@@ -2112,7 +1620,6 @@ export function createMotionGraphicsTool(ctx: ToolContext) {
         "utf-8"
       );
 
-      // Update project phases
       if (!project.phases) {
         project.phases = {};
       }
@@ -2137,10 +1644,9 @@ export function createMotionGraphicsTool(ctx: ToolContext) {
         outputPath: finalOutputPath,
         createdAt: new Date().toISOString(),
       });
-      project.phases[currentPhase].output =
-        JSON.stringify(phaseOutput);
+      project.phases[currentPhase].output = JSON.stringify(phaseOutput);
       project.updatedAt = new Date().toISOString();
-      await ctx.writeProject(projectID as string, project);
+      await ctx.writeProject(projectID, project);
 
       const nextSteps = [
         `1. cd ${assemblyDir}`,
@@ -2150,7 +1656,6 @@ export function createMotionGraphicsTool(ctx: ToolContext) {
         `   Output: ${finalOutputPath}`,
       ];
 
-      // Optional: auto-render the project after scaffolding.
       let renderStatus: string | undefined;
       let renderOutput: string | undefined;
       if (autoRender) {
@@ -2177,22 +1682,23 @@ export function createMotionGraphicsTool(ctx: ToolContext) {
       }
 
       return {
-        projectId: projectID,
-        mgId: meta.id,
-        projectName,
-        preset,
-        assemblyDir,
-        sceneCount: mgProject.scenes.length,
-        totalDuration: `${meta.totalDuration}s`,
-        compositionPath: join(srcDir, "Composition.tsx"),
-        outputPath: finalOutputPath,
-        status: meta.status,
-        renderStatus,
-        renderOutput:
-          renderStatus === "render_failed" ? renderOutput : undefined,
-        message: `Motion graphic project created: ${preset} (${meta.totalDuration}s, ${mgProject.scenes.length} scenes)`,
-        nextSteps,
+        output: JSON.stringify({
+          projectId: projectID,
+          mgId: meta.id,
+          projectName,
+          preset,
+          assemblyDir,
+          sceneCount: mgProject.scenes.length,
+          totalDuration: `${meta.totalDuration}s`,
+          compositionPath: join(srcDir, "Composition.tsx"),
+          outputPath: finalOutputPath,
+          status: meta.status,
+          renderStatus,
+          renderOutput: renderStatus === "render_failed" ? renderOutput : undefined,
+          message: `Motion graphic project created: ${preset} (${meta.totalDuration}s, ${mgProject.scenes.length} scenes)`,
+          nextSteps,
+        }),
       };
     },
-  };
+  });
 }

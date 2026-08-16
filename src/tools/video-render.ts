@@ -1,87 +1,57 @@
 import { join } from "node:path";
-import { mkdir, writeFile, readFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { tool } from "@opencode-ai/plugin";
 import type { ToolContext } from "../types";
 import { isValidProjectId } from "../constants";
 
 export function createVideoRenderTool(ctx: ToolContext) {
-  return {
-    name: "brandly_render_video",
+  return tool({
     description:
       "Render a Remotion composition to produce the final video file. Executes remotion render command to generate MP4, WebM, or GIF output.",
-    parameters: {
-      type: "object",
-      properties: {
-        projectID: {
-          type: "string",
-          description: "The project UUID",
-        },
-        compositionPath: {
-          type: "string",
-          description: "Path to the Remotion composition file",
-        },
-        outputPath: {
-          type: "string",
-          description: "Output video file path (optional)",
-        },
-        format: {
-          type: "string",
-          enum: ["mp4", "webm", "gif"],
-          default: "mp4",
-          description: "Output video format",
-        },
-        quality: {
-          type: "string",
-          enum: ["low", "medium", "high", "ultra"],
-          default: "high",
-          description: "Rendering quality preset",
-        },
-      },
-      required: ["projectID", "compositionPath"],
+    args: {
+      projectID: tool.schema.string().describe("The project UUID"),
+      compositionPath: tool.schema.string().describe("Path to the Remotion composition file"),
+      outputPath: tool.schema.string().optional().describe("Output video file path (optional)"),
+      format: tool.schema.enum(["mp4", "webm", "gif"]).default("mp4").describe("Output video format"),
+      quality: tool.schema.enum(["low", "medium", "high", "ultra"]).default("high").describe("Rendering quality preset"),
     },
-    execute: async (args: Record<string, unknown>) => {
-      const { projectID, compositionPath, outputPath, format, quality } = args;
-
-      if (!isValidProjectId(projectID as string)) {
+    async execute(args) {
+      if (!isValidProjectId(args.projectID)) {
         throw new Error("Invalid project ID format");
       }
 
-      const project = await ctx.readProject(projectID as string);
+      const project = await ctx.readProject(args.projectID);
       if (!project) {
-        throw new Error(`Project not found: ${projectID}`);
+        throw new Error(`Project not found: ${args.projectID}`);
       }
 
-      if (!existsSync(compositionPath as string)) {
-        throw new Error(`Composition file not found: ${compositionPath}`);
+      if (!existsSync(args.compositionPath)) {
+        throw new Error(`Composition file not found: ${args.compositionPath}`);
       }
 
-      // Create output directory
-      const outputDir = join(ctx.directory, "renders", projectID as string);
+      const outputDir = join(ctx.directory, "renders", args.projectID);
       await mkdir(outputDir, { recursive: true });
 
-      // Generate output path if not provided
       const finalOutputPath =
-        outputPath || join(outputDir, `render-${Date.now()}.${format}`);
+        args.outputPath || join(outputDir, `render-${Date.now()}.${args.format}`);
 
-      // Generate render command
       const renderCommand = generateRenderCommand(
-        compositionPath as string,
+        args.compositionPath,
         finalOutputPath,
-        format as string,
-        quality as string
+        args.format,
+        args.quality
       );
 
-      // Save render script
       const scriptPath = join(outputDir, `render-${Date.now()}.sh`);
       await writeFile(scriptPath, renderCommand, "utf-8");
 
-      // Save render metadata
       const renderMeta = {
         id: `render-${Date.now()}`,
-        compositionPath,
+        compositionPath: args.compositionPath,
         outputPath: finalOutputPath,
-        format,
-        quality,
+        format: args.format,
+        quality: args.quality,
         command: renderCommand,
         scriptPath,
         status: "pending",
@@ -91,7 +61,6 @@ export function createVideoRenderTool(ctx: ToolContext) {
       const metaPath = join(outputDir, `render-${renderMeta.id}.json`);
       await writeFile(metaPath, JSON.stringify(renderMeta, null, 2), "utf-8");
 
-      // Update project with render info
       if (!project.phases) {
         project.phases = {};
       }
@@ -114,39 +83,41 @@ export function createVideoRenderTool(ctx: ToolContext) {
 
       phaseOutput.renders.push({
         renderId: renderMeta.id,
-        compositionPath,
+        compositionPath: args.compositionPath,
         outputPath: finalOutputPath,
-        format,
-        quality,
+        format: args.format,
+        quality: args.quality,
         scriptPath,
         createdAt: new Date().toISOString(),
       });
 
       project.phases[currentPhase].output = JSON.stringify(phaseOutput);
       project.updatedAt = new Date().toISOString();
-      await ctx.writeProject(projectID as string, project);
+      await ctx.writeProject(args.projectID, project);
 
       return {
-        projectId: projectID,
-        renderId: renderMeta.id,
-        compositionPath,
-        outputPath: finalOutputPath,
-        format,
-        quality,
-        scriptPath,
-        status: "created",
-        message: `Render script created: ${scriptPath}`,
-        renderCommand: renderCommand,
-        nextSteps: [
-          "1. Install Remotion if not present: npm i -g remotion",
-          "2. Run the render script: bash " + scriptPath,
-          "3. Or run manually: " + renderCommand,
-          "4. Wait for rendering to complete",
-          "5. Output will be saved to: " + finalOutputPath,
-        ],
+        output: JSON.stringify({
+          projectId: args.projectID,
+          renderId: renderMeta.id,
+          compositionPath: args.compositionPath,
+          outputPath: finalOutputPath,
+          format: args.format,
+          quality: args.quality,
+          scriptPath,
+          status: "created",
+          message: `Render script created: ${scriptPath}`,
+          renderCommand: renderCommand,
+          nextSteps: [
+            "1. Install Remotion if not present: npm i -g remotion",
+            "2. Run the render script: bash " + scriptPath,
+            "3. Or run manually: " + renderCommand,
+            "4. Wait for rendering to complete",
+            "5. Output will be saved to: " + finalOutputPath,
+          ],
+        }),
       };
     },
-  };
+  });
 }
 
 function generateRenderCommand(
@@ -155,7 +126,6 @@ function generateRenderCommand(
   format: string,
   quality: string
 ): string {
-  // Quality presets
   const qualityFlags: Record<string, string> = {
     low: "--quality 50",
     medium: "--quality 75",
@@ -165,7 +135,6 @@ function generateRenderCommand(
 
   const qualityFlag = qualityFlags[quality] || qualityFlags.high;
 
-  // Format-specific flags
   const formatFlags: Record<string, string> = {
     mp4: "--codec h264",
     webm: "--codec vp8",

@@ -1,8 +1,7 @@
-import { Tool } from "@opencode-ai/plugin";
+import { tool } from "@opencode-ai/plugin/tool";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { randomUUID } from "node:crypto";
-import { ToolContext } from "../types";
+import type { ToolContext } from "../types";
 
 interface CharacterProfile {
   id: string;
@@ -99,155 +98,93 @@ function saveGuides(ctx: ToolContext, guides: ConsistencyGuide[]): void {
   );
 }
 
-export function createCharacterConsistencyTool(ctx: ToolContext): Tool {
-  return {
+export function createCharacterConsistencyTool(ctx: ToolContext) {
+  return tool({
     name: "brandly_character_consistency",
     description:
       "Advanced character consistency management with multi-provider support. Create character profiles with reference images, manage identity across Kling Elements 3.0, Seedance references, Higgsfield Soul ID, and more. Generate consistency guides, score character fidelity, and breakdown scripts into scenes/shots with character assignments.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        action: {
-          type: "string",
-          enum: [
-            "create_character",
-            "update_character",
-            "get_character",
-            "list_characters",
-            "delete_character",
-            "add_reference_image",
-            "remove_reference_image",
-            "create_consistency_guide",
-            "get_consistency_guide",
-            "score_consistency",
-            "generate_kling_prompt",
-            "generate_seedance_prompt",
-            "generate_higgsfield_prompt",
-            "export_character_bible",
-            "breakdown_script",
-          ],
-          description: "Action to perform",
-        },
-        characterId: {
-          type: "string",
-          description: "Character ID",
-        },
-        name: {
-          type: "string",
-          description: "Character name",
-        },
-        type: {
-          type: "string",
-          enum: ["person", "product", "object", "animal", "mascot", "custom"],
-          description: "Character type",
-        },
-        description: {
-          type: "string",
-          description: "Character description",
-        },
-        appearance: {
-          type: "object",
-          description: "Physical appearance details",
-          properties: {
-            physical: { type: "string" },
-            clothing: { type: "string" },
-            accessories: { type: "array", items: { type: "string" } },
-            colors: { type: "array", items: { type: "string" } },
-            style: { type: "string" },
-            brand: { type: "string" },
-          },
-        },
-        referenceImages: {
-          type: "array",
-          items: { type: "string" },
-          description: "Reference image paths or URLs",
-        },
-        provider: {
-          type: "string",
-          enum: ["kling", "seedance", "higgsfield", "openart"],
-          description: "Target provider for prompt generation",
-        },
-        guide: {
-          type: "object",
-          description: "Consistency guide guidelines",
-          properties: {
-            dos: { type: "array", items: { type: "string" } },
-            donts: { type: "array", items: { type: "string" } },
-            referenceAngles: { type: "array", items: { type: "string" } },
-            lightingNotes: { type: "string" },
-          },
-        },
-        sceneAssignments: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              sceneIndex: { type: "number" },
-              role: { type: "string", enum: ["primary", "secondary", "background"] },
-              position: { type: "string" },
-              action: { type: "string" },
-            },
-          },
-          description: "Scene assignments for the character",
-        },
-        tags: {
-          type: "array",
-          items: { type: "string" },
-          description: "Tags for categorization",
-        },
-        sceneIndex: {
-          type: "number",
-          description: "Scene index for scoring",
-        },
-        shots: {
-          type: "array",
-          description: "Shot descriptions for consistency scoring",
-          items: { type: "string" },
-        },
-        projectDescription: {
-          type: "string",
-          description: "Project description for prompt generation",
-        },
-        style: {
-          type: "string",
-          description: "Visual style for prompt generation",
-        },
-        script: {
-          type: "string",
-          description: "Script text to breakdown into scenes/shots",
-        },
-        shotDuration: {
-          type: "number",
-          description: "Target duration per shot in seconds (default: 5)",
-        },
-      },
-      required: ["action"],
+    args: {
+      action: tool.schema.enum(
+        [
+          "create_character",
+          "update_character",
+          "get_character",
+          "list_characters",
+          "delete_character",
+          "add_reference_image",
+          "remove_reference_image",
+          "create_consistency_guide",
+          "get_consistency_guide",
+          "score_consistency",
+          "generate_kling_prompt",
+          "generate_seedance_prompt",
+          "generate_higgsfield_prompt",
+          "export_character_bible",
+          "breakdown_script",
+        ],
+        { description: "Action to perform" }
+      ),
+      characterId: tool.schema.string({ description: "Character ID" }),
+      name: tool.schema.string({ description: "Character name" }),
+      type: tool.schema.enum(["person", "product", "object", "animal", "mascot", "custom"], { description: "Character type" }),
+      description: tool.schema.string({ description: "Character description" }),
+      appearance: tool.schema.object({
+        physical: tool.schema.string(),
+        clothing: tool.schema.string(),
+        accessories: tool.schema.array(tool.schema.string()),
+        colors: tool.schema.array(tool.schema.string()),
+        style: tool.schema.string(),
+        brand: tool.schema.string(),
+      }),
+      referenceImages: tool.schema.array(tool.schema.string(), { description: "Reference image paths or URLs" }),
+      provider: tool.schema.enum(["kling", "seedance", "higgsfield", "openart"], { description: "Target provider for prompt generation" }),
+      guide: tool.schema.object({
+        dos: tool.schema.array(tool.schema.string()),
+        donts: tool.schema.array(tool.schema.string()),
+        referenceAngles: tool.schema.array(tool.schema.string()),
+        lightingNotes: tool.schema.string(),
+      }),
+      sceneAssignments: tool.schema.array(
+        tool.schema.object({
+          sceneIndex: tool.schema.number(),
+          role: tool.schema.enum(["primary", "secondary", "background"]),
+          position: tool.schema.string(),
+          action: tool.schema.string(),
+        })
+      ),
+      tags: tool.schema.array(tool.schema.string(), { description: "Tags for categorization" }),
+      sceneIndex: tool.schema.number({ description: "Scene index for scoring" }),
+      shots: tool.schema.array(tool.schema.string(), { description: "Shot descriptions for consistency scoring" }),
+      projectDescription: tool.schema.string({ description: "Project description for prompt generation" }),
+      style: tool.schema.string({ description: "Visual style for prompt generation" }),
+      script: tool.schema.string({ description: "Script text to breakdown into scenes/shots" }),
+      shotDuration: tool.schema.number({ description: "Target duration per shot in seconds (default: 5)" }),
     },
-    execute: async (args: Record<string, unknown>) => {
-      const action = args.action as string;
+    execute: async (args) => {
+      const { action } = args;
       const characters = loadCharacters(ctx);
       const guides = loadGuides(ctx);
 
       switch (action) {
         case "create_character": {
-          const name = args.name as string;
+          const name = args.name;
           if (!name) {
-            return { success: false, error: "Name is required" };
+            return { output: JSON.stringify({ success: false, error: "Name is required" }) };
           }
 
           const character: CharacterProfile = {
             id: generateId("char"),
             name,
-            type: (args.type as any) || "person",
-            description: (args.description as string) || "",
-            appearance: (args.appearance as any) || {},
+            type: (args.type as CharacterProfile["type"]) || "person",
+            description: args.description || "",
+            appearance: (args.appearance as CharacterProfile["appearance"]) || {},
             references: {
-              images: (args.referenceImages as string[]) || [],
+              images: args.referenceImages || [],
             },
             providers: {},
             consistencyScore: 1.0,
             usageCount: 0,
-            tags: (args.tags as string[]) || [],
+            tags: args.tags || [],
             createdAt: new Date().toISOString(),
           };
 
@@ -255,105 +192,111 @@ export function createCharacterConsistencyTool(ctx: ToolContext): Tool {
           saveCharacters(ctx, characters);
 
           return {
-            success: true,
-            character,
-            message: `Character "${name}" created with ID: ${character.id}`,
+            output: JSON.stringify({
+              success: true,
+              character,
+              message: `Character "${name}" created with ID: ${character.id}`,
+            }),
           };
         }
 
         case "update_character": {
-          const charId = args.characterId as string;
+          const charId = args.characterId;
           if (!charId) {
-            return { success: false, error: "characterId is required" };
+            return { output: JSON.stringify({ success: false, error: "characterId is required" }) };
           }
 
           const index = characters.findIndex((c) => c.id === charId);
           if (index === -1) {
-            return { success: false, error: `Character ${charId} not found` };
+            return { output: JSON.stringify({ success: false, error: `Character ${charId} not found` }) };
           }
 
           const existing = characters[index];
-          if (args.name) existing.name = args.name as string;
-          if (args.type) existing.type = args.type as any;
-          if (args.description) existing.description = args.description as string;
-          if (args.appearance) existing.appearance = args.appearance as any;
-          if (args.tags) existing.tags = args.tags as string[];
+          if (args.name) existing.name = args.name;
+          if (args.type) existing.type = args.type as CharacterProfile["type"];
+          if (args.description) existing.description = args.description;
+          if (args.appearance) existing.appearance = args.appearance as CharacterProfile["appearance"];
+          if (args.tags) existing.tags = args.tags;
 
           characters[index] = existing;
           saveCharacters(ctx, characters);
 
-          return { success: true, character: existing };
+          return { output: JSON.stringify({ success: true, character: existing }) };
         }
 
         case "get_character": {
-          const charId = args.characterId as string;
+          const charId = args.characterId;
           if (!charId) {
-            return { success: false, error: "characterId is required" };
+            return { output: JSON.stringify({ success: false, error: "characterId is required" }) };
           }
 
           const character = characters.find((c) => c.id === charId);
           if (!character) {
-            return { success: false, error: `Character ${charId} not found` };
+            return { output: JSON.stringify({ success: false, error: `Character ${charId} not found` }) };
           }
 
-          return { success: true, character };
+          return { output: JSON.stringify({ success: true, character }) };
         }
 
         case "list_characters": {
           return {
-            success: true,
-            characters,
-            count: characters.length,
+            output: JSON.stringify({
+              success: true,
+              characters,
+              count: characters.length,
+            }),
           };
         }
 
         case "delete_character": {
-          const charId = args.characterId as string;
+          const charId = args.characterId;
           if (!charId) {
-            return { success: false, error: "characterId is required" };
+            return { output: JSON.stringify({ success: false, error: "characterId is required" }) };
           }
 
           const filtered = characters.filter((c) => c.id !== charId);
           if (filtered.length === characters.length) {
-            return { success: false, error: `Character ${charId} not found` };
+            return { output: JSON.stringify({ success: false, error: `Character ${charId} not found` }) };
           }
 
           saveCharacters(ctx, filtered);
-          return { success: true, message: `Character ${charId} deleted` };
+          return { output: JSON.stringify({ success: true, message: `Character ${charId} deleted` }) };
         }
 
         case "add_reference_image": {
-          const charId = args.characterId as string;
-          const imageUrl = (args.referenceImages as string[])?.[0];
+          const charId = args.characterId;
+          const imageUrl = args.referenceImages?.[0];
           if (!charId || !imageUrl) {
-            return { success: false, error: "characterId and referenceImages[0] are required" };
+            return { output: JSON.stringify({ success: false, error: "characterId and referenceImages[0] are required" }) };
           }
 
           const character = characters.find((c) => c.id === charId);
           if (!character) {
-            return { success: false, error: `Character ${charId} not found` };
+            return { output: JSON.stringify({ success: false, error: `Character ${charId} not found` }) };
           }
 
           character.references.images.push(imageUrl);
           saveCharacters(ctx, characters);
 
           return {
-            success: true,
-            message: `Added reference image to ${character.name}`,
-            referenceCount: character.references.images.length,
+            output: JSON.stringify({
+              success: true,
+              message: `Added reference image to ${character.name}`,
+              referenceCount: character.references.images.length,
+            }),
           };
         }
 
         case "remove_reference_image": {
-          const charId = args.characterId as string;
-          const imageUrl = (args.referenceImages as string[])?.[0];
+          const charId = args.characterId;
+          const imageUrl = args.referenceImages?.[0];
           if (!charId || !imageUrl) {
-            return { success: false, error: "characterId and referenceImages[0] are required" };
+            return { output: JSON.stringify({ success: false, error: "characterId and referenceImages[0] are required" }) };
           }
 
           const character = characters.find((c) => c.id === charId);
           if (!character) {
-            return { success: false, error: `Character ${charId} not found` };
+            return { output: JSON.stringify({ success: false, error: `Character ${charId} not found` }) };
           }
 
           character.references.images = character.references.images.filter(
@@ -362,87 +305,82 @@ export function createCharacterConsistencyTool(ctx: ToolContext): Tool {
           saveCharacters(ctx, characters);
 
           return {
-            success: true,
-            message: `Removed reference image from ${character.name}`,
-            referenceCount: character.references.images.length,
+            output: JSON.stringify({
+              success: true,
+              message: `Removed reference image from ${character.name}`,
+              referenceCount: character.references.images.length,
+            }),
           };
         }
 
         case "create_consistency_guide": {
-          const charId = args.characterId as string;
+          const charId = args.characterId;
           if (!charId) {
-            return { success: false, error: "characterId is required" };
+            return { output: JSON.stringify({ success: false, error: "characterId is required" }) };
           }
 
           const character = characters.find((c) => c.id === charId);
           if (!character) {
-            return { success: false, error: `Character ${charId} not found` };
+            return { output: JSON.stringify({ success: false, error: `Character ${charId} not found` }) };
           }
 
           const guide: ConsistencyGuide = {
             characterId: charId,
-            guidelines: (args.guide as any) || { dos: [], donts: [] },
-            sceneAssignments: (args.sceneAssignments as any[]) || [],
+            guidelines: (args.guide as ConsistencyGuide["guidelines"]) || { dos: [], donts: [] },
+            sceneAssignments: (args.sceneAssignments as ConsistencyGuide["sceneAssignments"]) || [],
           };
 
-          // Remove existing guide for this character
           const filteredGuides = guides.filter((g) => g.characterId !== charId);
           filteredGuides.push(guide);
           saveGuides(ctx, filteredGuides);
 
           return {
-            success: true,
-            guide,
-            message: `Consistency guide created for "${character.name}"`,
+            output: JSON.stringify({
+              success: true,
+              guide,
+              message: `Consistency guide created for "${character.name}"`,
+            }),
           };
         }
 
         case "get_consistency_guide": {
-          const charId = args.characterId as string;
+          const charId = args.characterId;
           if (!charId) {
-            return { success: false, error: "characterId is required" };
+            return { output: JSON.stringify({ success: false, error: "characterId is required" }) };
           }
 
           const guide = guides.find((g) => g.characterId === charId);
           if (!guide) {
-            return { success: false, error: `No guide found for character ${charId}` };
+            return { output: JSON.stringify({ success: false, error: `No guide found for character ${charId}` }) };
           }
 
-          return { success: true, guide };
+          return { output: JSON.stringify({ success: true, guide }) };
         }
 
         case "score_consistency": {
-          const charId = args.characterId as string;
-          const shots = (args.shots as string[]) || [];
+          const charId = args.characterId;
+          const shots = args.shots || [];
           if (!charId) {
-            return { success: false, error: "characterId is required" };
+            return { output: JSON.stringify({ success: false, error: "characterId is required" }) };
           }
 
           const character = characters.find((c) => c.id === charId);
           if (!character) {
-            return { success: false, error: `Character ${charId} not found` };
+            return { output: JSON.stringify({ success: false, error: `Character ${charId} not found` }) };
           }
 
-          // Score based on reference count and description completeness
-          let score = 0.5; // Base score
+          let score = 0.5;
           const refCount = character.references.images.length;
-          score += Math.min(refCount * 0.1, 0.3); // Up to 0.3 from references
+          score += Math.min(refCount * 0.1, 0.3);
           if (character.appearance.physical) score += 0.05;
           if (character.appearance.clothing) score += 0.05;
           if (character.appearance.colors?.length) score += 0.05;
           if (character.appearance.style) score += 0.05;
 
-          // Analyze shot descriptions for consistency keywords
           const consistencyKeywords = [
-            "same",
-            "consistent",
-            "matching",
-            "identical",
-            "maintain",
-            "keep",
-            "preserve",
+            "same", "consistent", "matching", "identical", "maintain", "keep", "preserve",
           ];
-          const shotBonus = shots.reduce((acc, shot) => {
+          const shotBonus = shots.reduce((acc: number, shot: string) => {
             const hasConsistency = consistencyKeywords.some((kw) =>
               shot.toLowerCase().includes(kw)
             );
@@ -451,56 +389,52 @@ export function createCharacterConsistencyTool(ctx: ToolContext): Tool {
 
           score = Math.min(score + shotBonus, 1.0);
 
-          // Update character score
           character.consistencyScore = Math.round(score * 100) / 100;
           saveCharacters(ctx, characters);
 
           return {
-            success: true,
-            characterId: charId,
-            characterName: character.name,
-            consistencyScore: character.consistencyScore,
-            factors: {
-              referenceImages: refCount,
-              hasPhysicalDescription: !!character.appearance.physical,
-              hasClothingDescription: !!character.appearance.clothing,
-              hasColorPalette: !!character.appearance.colors?.length,
-              hasStyleGuide: !!character.appearance.style,
-            },
-            recommendations:
-              score < 0.7
-                ? [
-                    "Add more reference images (2-4 recommended)",
-                    "Provide detailed physical description",
-                    "Define color palette",
-                    "Add clothing/style notes",
-                  ]
-                : ["Good consistency foundation"],
+            output: JSON.stringify({
+              success: true,
+              characterId: charId,
+              characterName: character.name,
+              consistencyScore: character.consistencyScore,
+              factors: {
+                referenceImages: refCount,
+                hasPhysicalDescription: !!character.appearance.physical,
+                hasClothingDescription: !!character.appearance.clothing,
+                hasColorPalette: !!character.appearance.colors?.length,
+                hasStyleGuide: !!character.appearance.style,
+              },
+              recommendations:
+                score < 0.7
+                  ? [
+                      "Add more reference images (2-4 recommended)",
+                      "Provide detailed physical description",
+                      "Define color palette",
+                      "Add clothing/style notes",
+                    ]
+                  : ["Good consistency foundation"],
+            }),
           };
         }
 
         case "generate_kling_prompt": {
-          const charId = args.characterId as string;
-          const projectDesc = (args.projectDescription as string) || "";
+          const charId = args.characterId;
+          const projectDesc = args.projectDescription || "";
           if (!charId) {
-            return { success: false, error: "characterId is required" };
+            return { output: JSON.stringify({ success: false, error: "characterId is required" }) };
           }
 
           const character = characters.find((c) => c.id === charId);
           if (!character) {
-            return { success: false, error: `Character ${charId} not found` };
+            return { output: JSON.stringify({ success: false, error: `Character ${charId} not found` }) };
           }
 
-          // Generate Kling 3.0 Elements 3.0 prompt
           const prompt = [
             `Subject: ${character.name}`,
             character.description ? `Description: ${character.description}` : "",
-            character.appearance.physical
-              ? `Physical: ${character.appearance.physical}`
-              : "",
-            character.appearance.clothing
-              ? `Clothing: ${character.appearance.clothing}`
-              : "",
+            character.appearance.physical ? `Physical: ${character.appearance.physical}` : "",
+            character.appearance.clothing ? `Clothing: ${character.appearance.clothing}` : "",
             character.appearance.colors?.length
               ? `Color palette: ${character.appearance.colors.join(", ")}`
               : "",
@@ -510,47 +444,41 @@ export function createCharacterConsistencyTool(ctx: ToolContext): Tool {
             .filter(Boolean)
             .join("\n");
 
-          // Update usage
           character.usageCount++;
           character.lastUsed = new Date().toISOString();
           saveCharacters(ctx, characters);
 
           return {
-            success: true,
-            provider: "kling",
-            prompt,
-            referenceCount: character.references.images.length,
-            elements3Binding: true,
-            notes: "Upload reference images as Subject in Kling 3.0 Elements 3.0 library",
+            output: JSON.stringify({
+              success: true,
+              provider: "kling",
+              prompt,
+              referenceCount: character.references.images.length,
+              elements3Binding: true,
+              notes: "Upload reference images as Subject in Kling 3.0 Elements 3.0 library",
+            }),
           };
         }
 
         case "generate_seedance_prompt": {
-          const charId = args.characterId as string;
-          const projectDesc = (args.projectDescription as string) || "";
-          const style = (args.style as string) || "cinematic";
+          const charId = args.characterId;
+          const projectDesc = args.projectDescription || "";
+          const style = args.style || "cinematic";
           if (!charId) {
-            return { success: false, error: "characterId is required" };
+            return { output: JSON.stringify({ success: false, error: "characterId is required" }) };
           }
 
           const character = characters.find((c) => c.id === charId);
           if (!character) {
-            return { success: false, error: `Character ${charId} not found` };
+            return { output: JSON.stringify({ success: false, error: `Character ${charId} not found` }) };
           }
 
-          // Generate Seedance 2.5 prompt with character reference
           const prompt = [
             `[Style: ${style}]`,
             `Character: ${character.name}`,
-            character.appearance.physical
-              ? `Appearance: ${character.appearance.physical}`
-              : "",
-            character.appearance.clothing
-              ? `Attire: ${character.appearance.clothing}`
-              : "",
-            character.appearance.style
-              ? `Aesthetic: ${character.appearance.style}`
-              : "",
+            character.appearance.physical ? `Appearance: ${character.appearance.physical}` : "",
+            character.appearance.clothing ? `Attire: ${character.appearance.clothing}` : "",
+            character.appearance.style ? `Aesthetic: ${character.appearance.style}` : "",
             projectDesc ? `\nScene: ${projectDesc}` : "",
             `\n[Character Lock - Reference: ${character.references.images.length} images]`,
             `[Consistency: Strict - Maintain identity across transitions]`,
@@ -563,37 +491,34 @@ export function createCharacterConsistencyTool(ctx: ToolContext): Tool {
           saveCharacters(ctx, characters);
 
           return {
-            success: true,
-            provider: "seedance",
-            prompt,
-            referenceCount: character.references.images.length,
-            characterLock: true,
-            notes: "Upload reference images as Visual Reference in Seedance 2.5",
+            output: JSON.stringify({
+              success: true,
+              provider: "seedance",
+              prompt,
+              referenceCount: character.references.images.length,
+              characterLock: true,
+              notes: "Upload reference images as Visual Reference in Seedance 2.5",
+            }),
           };
         }
 
         case "generate_higgsfield_prompt": {
-          const charId = args.characterId as string;
-          const projectDesc = (args.projectDescription as string) || "";
+          const charId = args.characterId;
+          const projectDesc = args.projectDescription || "";
           if (!charId) {
-            return { success: false, error: "characterId is required" };
+            return { output: JSON.stringify({ success: false, error: "characterId is required" }) };
           }
 
           const character = characters.find((c) => c.id === charId);
           if (!character) {
-            return { success: false, error: `Character ${charId} not found` };
+            return { output: JSON.stringify({ success: false, error: `Character ${charId} not found` }) };
           }
 
-          // Generate Higgsfield Soul ID prompt
           const prompt = [
             `Character: ${character.name}`,
             character.description ? `Identity: ${character.description}` : "",
-            character.appearance.physical
-              ? `Features: ${character.appearance.physical}`
-              : "",
-            character.appearance.clothing
-              ? `Style: ${character.appearance.clothing}`
-              : "",
+            character.appearance.physical ? `Features: ${character.appearance.physical}` : "",
+            character.appearance.clothing ? `Style: ${character.appearance.clothing}` : "",
             projectDesc ? `\nContext: ${projectDesc}` : "",
             `\n[Soul ID Training - ${character.references.images.length} reference images]`,
             character.providers.higgsfield?.soulId
@@ -608,26 +533,28 @@ export function createCharacterConsistencyTool(ctx: ToolContext): Tool {
           saveCharacters(ctx, characters);
 
           return {
-            success: true,
-            provider: "higgsfield",
-            prompt,
-            referenceCount: character.references.images.length,
-            soulId: character.providers.higgsfield?.soulId || null,
-            notes: character.providers.higgsfield?.soulId
-              ? "Use Soul ID for identity-faithful generation"
-              : "Train Soul ID first with 4-10 reference images",
+            output: JSON.stringify({
+              success: true,
+              provider: "higgsfield",
+              prompt,
+              referenceCount: character.references.images.length,
+              soulId: character.providers.higgsfield?.soulId || null,
+              notes: character.providers.higgsfield?.soulId
+                ? "Use Soul ID for identity-faithful generation"
+                : "Train Soul ID first with 4-10 reference images",
+            }),
           };
         }
 
         case "export_character_bible": {
-          const charId = args.characterId as string;
+          const charId = args.characterId;
           if (!charId) {
-            return { success: false, error: "characterId is required" };
+            return { output: JSON.stringify({ success: false, error: "characterId is required" }) };
           }
 
           const character = characters.find((c) => c.id === charId);
           if (!character) {
-            return { success: false, error: `Character ${charId} not found` };
+            return { output: JSON.stringify({ success: false, error: `Character ${charId} not found` }) };
           }
 
           const guide = guides.find((g) => g.characterId === charId);
@@ -667,36 +594,32 @@ export function createCharacterConsistencyTool(ctx: ToolContext): Tool {
             exportDate: new Date().toISOString(),
           };
 
-          // Save bible file
-          const biblePath = join(
-            ctx.artifactsDir,
-            `character-bible-${charId}.json`
-          );
+          const biblePath = join(ctx.artifactsDir, `character-bible-${charId}.json`);
           writeFileSync(biblePath, JSON.stringify(bible, null, 2));
 
           return {
-            success: true,
-            bible,
-            savedTo: biblePath,
+            output: JSON.stringify({
+              success: true,
+              bible,
+              savedTo: biblePath,
+            }),
           };
         }
 
         case "breakdown_script": {
-          const script = args.script as string;
+          const script = args.script;
           if (!script) {
-            return { success: false, error: "script is required" };
+            return { output: JSON.stringify({ success: false, error: "script is required" }) };
           }
 
-          const shotDuration = (args.shotDuration as number) || 5;
-          const style = (args.style as string) || "cinematic";
+          const shotDuration = args.shotDuration || 5;
+          const style = args.style || "cinematic";
 
-          // Parse script into scenes
           const sceneMarkers = script.match(
             /^#{1,3}\s*(Scene|SCENE|Scene\s*\d+).*$/gm
           );
           const lines = script.split("\n").filter((l) => l.trim());
 
-          // Extract scenes
           const scenes: {
             index: number;
             title: string;
@@ -719,7 +642,6 @@ export function createCharacterConsistencyTool(ctx: ToolContext): Tool {
             const trimmed = line.trim();
             if (!trimmed) continue;
 
-            // Check for scene header
             const sceneMatch = trimmed.match(
               /^#{1,3}\s*(?:Scene|SCENE)\s*(\d+)?:?\s*[-:]?\s*(.*)$/i
             );
@@ -729,9 +651,7 @@ export function createCharacterConsistencyTool(ctx: ToolContext): Tool {
               }
               currentScene = {
                 index: scenes.length + 1,
-                title:
-                  sceneMatch[2] ||
-                  `Scene ${sceneMatch[1] || scenes.length + 1}`,
+                title: sceneMatch[2] || `Scene ${sceneMatch[1] || scenes.length + 1}`,
                 content: "",
                 shots: [],
                 characters: [],
@@ -752,34 +672,15 @@ export function createCharacterConsistencyTool(ctx: ToolContext): Tool {
 
             currentScene.content += trimmed + "\n";
 
-            // Extract character mentions (capitalized words that look like names)
             const charMatches = trimmed.match(
               /\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\b/g
             );
             if (charMatches) {
               for (const char of charMatches) {
-                // Filter out common non-character words
                 const skipWords = [
-                  "The",
-                  "This",
-                  "That",
-                  "When",
-                  "Then",
-                  "What",
-                  "Where",
-                  "How",
-                  "Why",
-                  "Who",
-                  "Which",
-                  "Scene",
-                  "Shot",
-                  "Cut",
-                  "Fade",
-                  "Camera",
-                  "INT",
-                  "EXT",
-                  "Interior",
-                  "Exterior",
+                  "The", "This", "That", "When", "Then", "What", "Where", "How",
+                  "Why", "Who", "Which", "Scene", "Shot", "Cut", "Fade", "Camera",
+                  "INT", "EXT", "Interior", "Exterior",
                 ];
                 if (
                   !skipWords.includes(char) &&
@@ -790,12 +691,11 @@ export function createCharacterConsistencyTool(ctx: ToolContext): Tool {
               }
             }
 
-            // Create shots from action lines
             const isAction =
               trimmed.includes(".") &&
               !trimmed.startsWith("[") &&
               !trimmed.startsWith("(");
-            const isDialogue = trimmed.startsWith('"') || trimmed.startsWith('"');
+            const isDialogue = trimmed.startsWith('"') || trimmed.startsWith("\u201C");
             const isDirection = trimmed.startsWith("[") || trimmed.startsWith("(");
 
             if (isAction || isDialogue || isDirection) {
@@ -817,7 +717,6 @@ export function createCharacterConsistencyTool(ctx: ToolContext): Tool {
             scenes.push(currentScene);
           }
 
-          // Generate shot list with timing
           let totalDuration = 0;
           const shotList = scenes.flatMap((scene) =>
             scene.shots.map((shot) => {
@@ -835,7 +734,6 @@ export function createCharacterConsistencyTool(ctx: ToolContext): Tool {
             })
           );
 
-          // Match characters to existing profiles
           const allSceneChars = scenes.flatMap((s) => s.characters);
           const uniqueChars = [...new Set(allSceneChars)];
           const matchedCharacters = uniqueChars
@@ -856,7 +754,6 @@ export function createCharacterConsistencyTool(ctx: ToolContext): Tool {
               (c) => c.needsCreation || c.existingCharacter
             );
 
-          // Generate provider prompts for each scene
           const providerPrompts = {
             kling: scenes.map((scene) => ({
               scene: scene.index,
@@ -873,40 +770,41 @@ export function createCharacterConsistencyTool(ctx: ToolContext): Tool {
           };
 
           return {
-            success: true,
-            breakdown: {
-              sceneCount: scenes.length,
-              shotCount: shotList.length,
-              totalDuration,
-              estimatedVideoLength: `${Math.ceil(totalDuration / 60)}:${String(totalDuration % 60).padStart(2, "0")}`,
-              scenes: scenes.map((s) => ({
-                index: s.index,
-                title: s.title,
-                shotCount: s.shots.length,
-                characters: s.characters,
-                content: s.content.trim(),
-              })),
-              shotList,
-              characters: matchedCharacters,
-              providerPrompts,
-            },
-            recommendations: {
-              shotsPerScene: scenes.map((s) =>
-                s.shots.length < 2
-                  ? `Scene ${s.index}: Consider adding more shots for visual variety`
-                  : null
-              ).filter(Boolean),
-              characterConsistency: matchedCharacters.filter((c) => c.needsCreation)
-                .length > 0
-                ? `Create character profiles for: ${matchedCharacters.filter((c) => c.needsCreation).map((c) => c.name).join(", ")}`
-                : "All characters have existing profiles",
-            },
+            output: JSON.stringify({
+              success: true,
+              breakdown: {
+                sceneCount: scenes.length,
+                shotCount: shotList.length,
+                totalDuration,
+                estimatedVideoLength: `${Math.ceil(totalDuration / 60)}:${String(totalDuration % 60).padStart(2, "0")}`,
+                scenes: scenes.map((s) => ({
+                  index: s.index,
+                  title: s.title,
+                  shotCount: s.shots.length,
+                  characters: s.characters,
+                  content: s.content.trim(),
+                })),
+                shotList,
+                characters: matchedCharacters,
+                providerPrompts,
+              },
+              recommendations: {
+                shotsPerScene: scenes.map((s) =>
+                  s.shots.length < 2
+                    ? `Scene ${s.index}: Consider adding more shots for visual variety`
+                    : null
+                ).filter(Boolean),
+                characterConsistency: matchedCharacters.filter((c) => c.needsCreation).length > 0
+                  ? `Create character profiles for: ${matchedCharacters.filter((c) => c.needsCreation).map((c) => c.name).join(", ")}`
+                  : "All characters have existing profiles",
+              },
+            }),
           };
         }
 
         default:
-          return { success: false, error: `Unknown action: ${action}` };
+          return { output: JSON.stringify({ success: false, error: `Unknown action: ${action}` }) };
       }
     },
-  };
+  });
 }

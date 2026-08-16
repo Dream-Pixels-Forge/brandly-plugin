@@ -1,35 +1,26 @@
 import { join } from "node:path";
 import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { tool } from "@opencode-ai/plugin";
 import type { ToolContext } from "../types";
 import { isValidProjectId, PHASE_AGENT_MAP } from "../constants";
 import { withRetry } from "../retry";
 
 export function createRunTool(ctx: ToolContext) {
-  return {
-    name: "brandly_run_project",
+  return tool({
     description:
       "Run the next phase of the Brandly pipeline. Reads the current phase and dispatches the appropriate agent subagent. Call after brandly_approve to advance the pipeline.",
-    parameters: {
-      type: "object",
-      properties: {
-        projectID: {
-          type: "string",
-          description: "The project UUID",
-        },
-      },
-      required: ["projectID"],
+    args: {
+      projectID: tool.schema.string().describe("The project UUID"),
     },
-    execute: async (args: Record<string, unknown>) => {
-      const { projectID } = args;
-
-      if (!isValidProjectId(projectID as string)) {
+    async execute(args) {
+      if (!isValidProjectId(args.projectID)) {
         throw new Error("Invalid project ID format");
       }
 
-      const project = await ctx.readProject(projectID as string);
+      const project = await ctx.readProject(args.projectID);
       if (!project) {
-        throw new Error(`Project not found: ${projectID}`);
+        throw new Error(`Project not found: ${args.projectID}`);
       }
 
       if (project.status === "cancelled") {
@@ -44,9 +35,11 @@ export function createRunTool(ctx: ToolContext) {
 
       if (!agentFile) {
         return {
-          projectId: projectID,
-          status: "completed",
-          message: "All phases completed",
+          output: JSON.stringify({
+            projectId: args.projectID,
+            status: "completed",
+            message: "All phases completed",
+          }),
         };
       }
 
@@ -67,13 +60,15 @@ export function createRunTool(ctx: ToolContext) {
       );
 
       return {
-        projectId: projectID,
-        currentPhase,
-        agent: agentFile,
-        agentPrompt,
-        status: "dispatched",
-        message: `Dispatched ${agentFile} for phase "${currentPhase}"`,
+        output: JSON.stringify({
+          projectId: args.projectID,
+          currentPhase,
+          agent: agentFile,
+          agentPrompt,
+          status: "dispatched",
+          message: `Dispatched ${agentFile} for phase "${currentPhase}"`,
+        }),
       };
     },
-  };
+  });
 }

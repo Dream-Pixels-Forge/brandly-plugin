@@ -1,15 +1,14 @@
-import { Tool } from "@opencode-ai/plugin";
+import { tool } from "@opencode-ai/plugin/tool";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { randomUUID } from "node:crypto";
-import { ToolContext, ProjectData } from "../types";
+import type { ToolContext } from "../types";
 
 interface CharacterReference {
   id: string;
   name: string;
   type: "person" | "product" | "object" | "animal" | "custom";
   description: string;
-  referenceImages: string[]; // paths to reference images
+  referenceImages: string[];
   attributes: {
     appearance?: string;
     clothing?: string;
@@ -18,7 +17,7 @@ interface CharacterReference {
     brand?: string;
     features?: string[];
   };
-  consistencyScore?: number; // 0-1, how consistent the character is across shots
+  consistencyScore?: number;
   usageCount: number;
   lastUsed?: string;
 }
@@ -47,117 +46,62 @@ function generateCharacterId(): string {
   return `char-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export function createSceneConsistencyTool(ctx: ToolContext): Tool {
-  return {
+export function createSceneConsistencyTool(ctx: ToolContext) {
+  return tool({
     name: "brandly_scene_consistency",
     description:
       "Lock character and product references across multiple shots for visual consistency. Define characters/products, assign them to scenes, and generate prompts that maintain consistent appearance throughout the video.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        action: {
-          type: "string",
-          enum: [
-            "create_character",
-            "update_character",
-            "list_characters",
-            "delete_character",
-            "assign_to_scene",
-            "remove_from_scene",
-            "get_scene_plan",
-            "generate_consistent_prompt",
-            "set_rules",
-          ],
-          description: "Action to perform",
-        },
-        projectID: {
-          type: "string",
-          description: "Project ID",
-        },
-        characterId: {
-          type: "string",
-          description: "Character ID (required for update/delete/assign/remove)",
-        },
-        name: {
-          type: "string",
-          description: "Character name",
-        },
-        type: {
-          type: "string",
-          enum: ["person", "product", "object", "animal", "custom"],
-          description: "Character type",
-        },
-        description: {
-          type: "string",
-          description: "Character description for prompt generation",
-        },
-        referenceImages: {
-          type: "array",
-          items: { type: "string" },
-          description: "Paths to reference images",
-        },
-        attributes: {
-          type: "object",
-          properties: {
-            appearance: { type: "string" },
-            clothing: { type: "string" },
-            colors: { type: "array", items: { type: "string" } },
-            style: { type: "string" },
-            brand: { type: "string" },
-            features: { type: "array", items: { type: "string" } },
-          },
-        },
-        sceneIndex: {
-          type: "number",
-          description: "Scene index (0-based)",
-        },
-        role: {
-          type: "string",
-          enum: ["primary", "secondary", "background"],
-          description: "Character role in the scene",
-        },
-        action_description: {
-          type: "string",
-          description: "What the character is doing in the scene",
-        },
-        position: {
-          type: "string",
-          description: "Position in the frame (e.g. left third, center, right third)",
-        },
-        notes: {
-          type: "string",
-          description: "Additional notes for this scene assignment",
-        },
-        basePrompt: {
-          type: "string",
-          description: "Base prompt to enhance with consistency references",
-        },
-        sceneCount: {
-          type: "number",
-          description: "Number of scenes for prompt generation",
-        },
-        rules: {
-          type: "object",
-          properties: {
-            maintainAppearance: { type: "boolean" },
-            lockColors: { type: "boolean" },
-            lockClothing: { type: "boolean" },
-            referenceStrength: { type: "string", enum: ["strict", "moderate", "loose"] },
-          },
-        },
-      },
-      required: ["action", "projectID"],
+    args: {
+      action: tool.schema.enum(
+        [
+          "create_character",
+          "update_character",
+          "list_characters",
+          "delete_character",
+          "assign_to_scene",
+          "remove_from_scene",
+          "get_scene_plan",
+          "generate_consistent_prompt",
+          "set_rules",
+        ],
+        { description: "Action to perform" }
+      ),
+      projectID: tool.schema.string({ description: "Project ID" }),
+      characterId: tool.schema.string({ description: "Character ID (required for update/delete/assign/remove)" }),
+      name: tool.schema.string({ description: "Character name" }),
+      type: tool.schema.enum(["person", "product", "object", "animal", "custom"], { description: "Character type" }),
+      description: tool.schema.string({ description: "Character description for prompt generation" }),
+      referenceImages: tool.schema.array(tool.schema.string(), { description: "Paths to reference images" }),
+      attributes: tool.schema.object({
+        appearance: tool.schema.string(),
+        clothing: tool.schema.string(),
+        colors: tool.schema.array(tool.schema.string()),
+        style: tool.schema.string(),
+        brand: tool.schema.string(),
+        features: tool.schema.array(tool.schema.string()),
+      }),
+      sceneIndex: tool.schema.number({ description: "Scene index (0-based)" }),
+      role: tool.schema.enum(["primary", "secondary", "background"], { description: "Character role in the scene" }),
+      action_description: tool.schema.string({ description: "What the character is doing in the scene" }),
+      position: tool.schema.string({ description: "Position in the frame (e.g. left third, center, right third)" }),
+      notes: tool.schema.string({ description: "Additional notes for this scene assignment" }),
+      basePrompt: tool.schema.string({ description: "Base prompt to enhance with consistency references" }),
+      sceneCount: tool.schema.number({ description: "Number of scenes for prompt generation" }),
+      rules: tool.schema.object({
+        maintainAppearance: tool.schema.boolean(),
+        lockColors: tool.schema.boolean(),
+        lockClothing: tool.schema.boolean(),
+        referenceStrength: tool.schema.enum(["strict", "moderate", "loose"]),
+      }),
     },
-    execute: async (input: any) => {
-      const { action, projectID } = input;
+    execute: async (args) => {
+      const { action, projectID } = args;
 
-      // Validate project
       const projectDir = join(ctx.directory, ".brandly", "projects", projectID);
       if (!existsSync(projectDir)) {
         throw new Error(`Project ${projectID} not found`);
       }
 
-      // Load or create consistency plan
       const consistencyDir = join(ctx.directory, "consistency", projectID);
       mkdirSync(consistencyDir, { recursive: true });
 
@@ -188,66 +132,65 @@ export function createSceneConsistencyTool(ctx: ToolContext): Tool {
           const id = generateCharacterId();
           const character: CharacterReference = {
             id,
-            name: input.name || "Unnamed Character",
-            type: input.type || "person",
-            description: input.description || "",
-            referenceImages: input.referenceImages || [],
-            attributes: input.attributes || {},
+            name: args.name || "Unnamed Character",
+            type: (args.type as CharacterReference["type"]) || "person",
+            description: args.description || "",
+            referenceImages: args.referenceImages || [],
+            attributes: args.attributes || {},
             usageCount: 0,
           };
           plan.characters.push(character);
           savePlan();
-          return { id, ...character, message: "Character created" };
+          return { output: JSON.stringify({ id, ...character, message: "Character created" }) };
         }
 
         case "update_character": {
-          if (!input.characterId) throw new Error("characterId required");
-          const char = plan.characters.find((c) => c.id === input.characterId);
+          if (!args.characterId) throw new Error("characterId required");
+          const char = plan.characters.find((c) => c.id === args.characterId);
           if (!char) throw new Error("Character not found");
 
-          if (input.name) char.name = input.name;
-          if (input.type) char.type = input.type;
-          if (input.description) char.description = input.description;
-          if (input.referenceImages) char.referenceImages = input.referenceImages;
-          if (input.attributes) {
-            char.attributes = { ...char.attributes, ...input.attributes };
+          if (args.name) char.name = args.name;
+          if (args.type) char.type = args.type as CharacterReference["type"];
+          if (args.description) char.description = args.description;
+          if (args.referenceImages) char.referenceImages = args.referenceImages;
+          if (args.attributes) {
+            char.attributes = { ...char.attributes, ...args.attributes };
           }
           savePlan();
-          return { id: char.id, ...char, message: "Character updated" };
+          return { output: JSON.stringify({ id: char.id, ...char, message: "Character updated" }) };
         }
 
         case "list_characters": {
-          return { characters: plan.characters };
+          return { output: JSON.stringify({ characters: plan.characters }) };
         }
 
         case "delete_character": {
-          if (!input.characterId) throw new Error("characterId required");
-          plan.characters = plan.characters.filter((c) => c.id !== input.characterId);
+          if (!args.characterId) throw new Error("characterId required");
+          plan.characters = plan.characters.filter((c) => c.id !== args.characterId);
           plan.assignments = plan.assignments.filter(
-            (a) => a.characterId !== input.characterId
+            (a) => a.characterId !== args.characterId
           );
           savePlan();
-          return { deleted: input.characterId };
+          return { output: JSON.stringify({ deleted: args.characterId }) };
         }
 
         case "assign_to_scene": {
-          if (!input.characterId) throw new Error("characterId required");
-          if (input.sceneIndex === undefined) throw new Error("sceneIndex required");
-          const char = plan.characters.find((c) => c.id === input.characterId);
+          if (!args.characterId) throw new Error("characterId required");
+          if (args.sceneIndex === undefined) throw new Error("sceneIndex required");
+          const char = plan.characters.find((c) => c.id === args.characterId);
           if (!char) throw new Error("Character not found");
 
-          // Remove existing assignment for same character in same scene
           plan.assignments = plan.assignments.filter(
-            (a) => !(a.sceneIndex === input.sceneIndex && a.characterId === input.characterId)
+            (a) => !(a.sceneIndex === args.sceneIndex && a.characterId === args.characterId)
           );
 
           const assignment: SceneAssignment = {
-            sceneIndex: input.sceneIndex,
-            characterId: input.characterId,
-            role: input.role || "primary",
-            action: input.action_description || "",
-            position: input.position || "center",
-            notes: input.notes || "",
+            sceneIndex: args.sceneIndex,
+            characterId: args.characterId,
+            role: (args.role as SceneAssignment["role"]) || "primary",
+            action: args.action_description || "",
+            position: args.position || "center",
+            notes: args.notes || "",
           };
           plan.assignments.push(assignment);
 
@@ -255,17 +198,17 @@ export function createSceneConsistencyTool(ctx: ToolContext): Tool {
           char.lastUsed = new Date().toISOString();
 
           savePlan();
-          return { assignment, character: char.name, message: `Assigned to scene ${input.sceneIndex}` };
+          return { output: JSON.stringify({ assignment, character: char.name, message: `Assigned to scene ${args.sceneIndex}` }) };
         }
 
         case "remove_from_scene": {
-          if (!input.characterId) throw new Error("characterId required");
-          if (input.sceneIndex === undefined) throw new Error("sceneIndex required");
+          if (!args.characterId) throw new Error("characterId required");
+          if (args.sceneIndex === undefined) throw new Error("sceneIndex required");
           plan.assignments = plan.assignments.filter(
-            (a) => !(a.sceneIndex === input.sceneIndex && a.characterId === input.characterId)
+            (a) => !(a.sceneIndex === args.sceneIndex && a.characterId === args.characterId)
           );
           savePlan();
-          return { removed: input.characterId, scene: input.sceneIndex };
+          return { output: JSON.stringify({ removed: args.characterId, scene: args.sceneIndex }) };
         }
 
         case "get_scene_plan": {
@@ -276,12 +219,12 @@ export function createSceneConsistencyTool(ctx: ToolContext): Tool {
             return acc;
           }, {} as Record<number, (SceneAssignment & { characterName: string })[]>);
 
-          return { plan, scenes, rules: plan.rules };
+          return { output: JSON.stringify({ plan, scenes, rules: plan.rules }) };
         }
 
         case "generate_consistent_prompt": {
-          const sceneCount = input.sceneCount || 5;
-          const basePrompt = input.basePrompt || "";
+          const sceneCount = args.sceneCount || 5;
+          const basePrompt = args.basePrompt || "";
           const prompts: Array<{ scene: number; prompt: string; references: string[] }> = [];
 
           for (let i = 0; i < sceneCount; i++) {
@@ -293,7 +236,6 @@ export function createSceneConsistencyTool(ctx: ToolContext): Tool {
               const char = plan.characters.find((c) => c.id === assignment.characterId);
               if (!char) continue;
 
-              // Build character reference string
               let charRef = char.description;
               if (char.attributes.appearance) charRef += `, ${char.attributes.appearance}`;
               if (char.attributes.clothing && plan.rules.lockClothing) {
@@ -308,7 +250,6 @@ export function createSceneConsistencyTool(ctx: ToolContext): Tool {
                 `${char.name} (${assignment.role}): ${charRef} - ${assignment.action} at ${assignment.position}`
               );
 
-              // Add reference image references
               if (char.referenceImages.length > 0) {
                 refs.push(...char.referenceImages);
               }
@@ -332,27 +273,29 @@ export function createSceneConsistencyTool(ctx: ToolContext): Tool {
           }
 
           return {
-            prompts,
-            rules: plan.rules,
-            charactersUsed: plan.characters.map((c) => ({
-              name: c.name,
-              type: c.type,
-              referenceCount: c.referenceImages.length,
-            })),
+            output: JSON.stringify({
+              prompts,
+              rules: plan.rules,
+              charactersUsed: plan.characters.map((c) => ({
+                name: c.name,
+                type: c.type,
+                referenceCount: c.referenceImages.length,
+              })),
+            }),
           };
         }
 
         case "set_rules": {
-          if (input.rules) {
-            plan.rules = { ...plan.rules, ...input.rules };
+          if (args.rules) {
+            plan.rules = { ...plan.rules, ...args.rules };
             savePlan();
           }
-          return { rules: plan.rules };
+          return { output: JSON.stringify({ rules: plan.rules }) };
         }
 
         default:
           throw new Error(`Unknown action: ${action}`);
       }
     },
-  };
+  });
 }

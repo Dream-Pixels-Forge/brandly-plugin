@@ -1,35 +1,23 @@
+import { tool } from "@opencode-ai/plugin";
 import type { ToolContext } from "../types";
 import { isValidProjectId } from "../constants";
 
 export function createValidateTool(ctx: ToolContext) {
-  return {
-    name: "brandly_validate",
+  return tool({
     description:
       "Run virality validation on the final video. Calls Higgsfield virality predictor to score the video and suggest improvements. Updates the project's viralityScore in state.",
-    parameters: {
-      type: "object",
-      properties: {
-        projectID: {
-          type: "string",
-          description: "The project UUID",
-        },
-        videoPath: {
-          type: "string",
-          description: "Path to the rendered video",
-        },
-      },
-      required: ["projectID", "videoPath"],
+    args: {
+      projectID: tool.schema.string().describe("The project UUID"),
+      videoPath: tool.schema.string().describe("Path to the rendered video"),
     },
-    execute: async (args: Record<string, unknown>) => {
-      const { projectID, videoPath } = args;
-
-      if (!isValidProjectId(projectID as string)) {
+    async execute(args) {
+      if (!isValidProjectId(args.projectID)) {
         throw new Error("Invalid project ID format");
       }
 
-      const project = await ctx.readProject(projectID as string);
+      const project = await ctx.readProject(args.projectID);
       if (!project) {
-        throw new Error(`Project not found: ${projectID}`);
+        throw new Error(`Project not found: ${args.projectID}`);
       }
 
       if (project.status === "cancelled") {
@@ -37,11 +25,13 @@ export function createValidateTool(ctx: ToolContext) {
       }
 
       return {
-        projectId: projectID,
-        videoPath,
-        status: "validating",
-        message: "Virality validation initiated",
+        output: JSON.stringify({
+          projectId: args.projectID,
+          videoPath: args.videoPath,
+          status: "validating",
+          message: "Virality validation initiated",
+        }),
       };
     },
-  };
+  });
 }

@@ -1,31 +1,22 @@
+import { tool } from "@opencode-ai/plugin";
 import type { ToolContext } from "../types";
 import { isValidProjectId, PHASE_ORDER } from "../constants";
 
 export function createProgressTool(ctx: ToolContext) {
-  return {
-    name: "brandly_progress",
+  return tool({
     description:
       "Show progress of a Brandly project — overall % complete, phase-by-phase status, time in current phase, and estimated time remaining.",
-    parameters: {
-      type: "object",
-      properties: {
-        projectID: {
-          type: "string",
-          description: "The project UUID",
-        },
-      },
-      required: ["projectID"],
+    args: {
+      projectID: tool.schema.string().describe("The project UUID"),
     },
-    execute: async (args: Record<string, unknown>) => {
-      const { projectID } = args;
-
-      if (!isValidProjectId(projectID as string)) {
+    async execute(args) {
+      if (!isValidProjectId(args.projectID)) {
         throw new Error("Invalid project ID format");
       }
 
-      const project = await ctx.readProject(projectID as string);
+      const project = await ctx.readProject(args.projectID);
       if (!project) {
-        throw new Error(`Project not found: ${projectID}`);
+        throw new Error(`Project not found: ${args.projectID}`);
       }
 
       const phases = (project.phases as Record<string, any>) || {};
@@ -82,24 +73,26 @@ export function createProgressTool(ctx: ToolContext) {
       }
 
       return {
-        projectId: projectID,
-        projectStatus: project.status,
-        currentPhase,
-        overallPercent,
-        completedPhases,
-        totalPhases,
-        phases: phaseStatuses,
-        timeInCurrentPhase,
-        estimatedRemaining,
-        status:
-          project.status === "cancelled"
-            ? "Project cancelled"
-            : project.status === "paused"
-            ? "Project paused"
-            : project.status === "completed"
-            ? "All phases complete"
-            : `Phase ${completedPhases}/${totalPhases} (${overallPercent}%)`,
+        output: JSON.stringify({
+          projectId: args.projectID,
+          projectStatus: project.status,
+          currentPhase,
+          overallPercent,
+          completedPhases,
+          totalPhases,
+          phases: phaseStatuses,
+          timeInCurrentPhase,
+          estimatedRemaining,
+          status:
+            project.status === "cancelled"
+              ? "Project cancelled"
+              : project.status === "paused"
+              ? "Project paused"
+              : project.status === "completed"
+              ? "All phases complete"
+              : `Phase ${completedPhases}/${totalPhases} (${overallPercent}%)`,
+        }),
       };
     },
-  };
+  });
 }

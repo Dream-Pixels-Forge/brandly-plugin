@@ -1,5 +1,6 @@
+import { tool } from "@opencode-ai/plugin/tool";
 import { join } from "node:path";
-import { mkdir, writeFile, readdir, readFile } from "node:fs/promises";
+import { mkdir, writeFile, readdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import type { ToolContext } from "../types";
 import { isValidProjectId } from "../constants";
@@ -59,10 +60,6 @@ async function discoverMedia(dir: string): Promise<ClipAsset[]> {
   return clips;
 }
 
-function inferDurationForImage(fps: number): number {
-  return 3; // 3 seconds per image by default
-}
-
 function generateAssemblyPlan(
   assets: ClipAsset[],
   params: Record<string, unknown>,
@@ -85,7 +82,7 @@ function generateAssemblyPlan(
   const segments: MontageSegment[] = [];
 
   for (const clip of orderedClips) {
-    const duration = clip.type === "image" ? inferDurationForImage(fps) : clipDuration;
+    const duration = clip.type === "image" ? 3 : clipDuration;
     segments.push({
       clip,
       duration,
@@ -211,7 +208,7 @@ export const RemotionComposition = () => {
 `;
 }
 
-function generateRemotionConfig(projectName: string): string {
+function generateRemotionConfig(): string {
   return `import { Config } from "@remotion/cli/config";
 
 Config.setVideoImageFormat("jpeg");
@@ -279,109 +276,65 @@ echo "✅ Build complete: ${outputPath}"
 }
 
 export function createAssemblyTool(ctx: ToolContext) {
-  return {
+  return tool({
     name: "brandly_assemble",
     description:
       "Assemble all generated video clips, images, and audio into a final montage using a complete Remotion project. Discovers assets, creates project structure, and optionally renders the final video.",
-    parameters: {
-      type: "object",
-      properties: {
-        projectID: {
-          type: "string",
-          description: "The project UUID",
-        },
-        style: {
-          type: "string",
-          enum: ["montage", "cinematic", "ugc", "continuous", "simple"],
-          default: "montage",
-          description: "Assembly style preset",
-        },
-        clipDuration: {
-          type: "number",
-          default: 3,
-          description: "Default duration in seconds for each video clip (images always use 3s)",
-        },
-        transitionType: {
-          type: "string",
-          enum: ["fade", "slide", "wipe", "none"],
-          default: "fade",
-          description: "Transition type between clips",
-        },
-        transitionDuration: {
-          type: "number",
-          default: 0.5,
-          description: "Transition duration in seconds",
-        },
-        fps: {
-          type: "number",
-          default: 30,
-          description: "Frames per second",
-        },
-        width: {
-          type: "number",
-          default: 1920,
-          description: "Output width in pixels",
-        },
-        height: {
-          type: "number",
-          default: 1080,
-          description: "Output height in pixels",
-        },
-        outputPath: {
-          type: "string",
-          description: "Output file path for rendered video",
-        },
-        autoRender: {
-          type: "boolean",
-          default: false,
-          description: "Automatically render after creating the project",
-        },
-        clipOrder: {
-          type: "array",
-          items: { type: "string" },
-          description: "Optional explicit clip order by filename. Unlisted clips are appended.",
-        },
-      },
-      required: ["projectID"],
+    args: {
+      projectID: tool.schema.string({ description: "The project UUID" }),
+      style: tool.schema.enum(["montage", "cinematic", "ugc", "continuous", "simple"], {
+        description: "Assembly style preset",
+        default: "montage",
+      }),
+      clipDuration: tool.schema.number({ description: "Default duration in seconds for each video clip (images always use 3s)", default: 3 }),
+      transitionType: tool.schema.enum(["fade", "slide", "wipe", "none"], {
+        description: "Transition type between clips",
+        default: "fade",
+      }),
+      transitionDuration: tool.schema.number({ description: "Transition duration in seconds", default: 0.5 }),
+      fps: tool.schema.number({ description: "Frames per second", default: 30 }),
+      width: tool.schema.number({ description: "Output width in pixels", default: 1920 }),
+      height: tool.schema.number({ description: "Output height in pixels", default: 1080 }),
+      outputPath: tool.schema.string({ description: "Output file path for rendered video" }),
+      autoRender: tool.schema.boolean({ description: "Automatically render after creating the project", default: false }),
+      clipOrder: tool.schema.array(tool.schema.string(), { description: "Optional explicit clip order by filename. Unlisted clips are appended." }),
     },
-    execute: async (args: Record<string, unknown>) => {
+    execute: async (args) => {
       const {
         projectID,
-        style,
-        clipDuration,
-        transitionType,
-        transitionDuration,
-        fps,
-        width,
-        height,
+        style = "montage",
+        clipDuration = 3,
+        transitionType = "fade",
+        transitionDuration = 0.5,
+        fps = 30,
+        width = 1920,
+        height = 1080,
         outputPath,
-        autoRender,
+        autoRender = false,
         clipOrder,
       } = args;
 
-      if (!isValidProjectId(projectID as string)) {
+      if (!isValidProjectId(projectID)) {
         throw new Error("Invalid project ID format");
       }
 
-      const project = await ctx.readProject(projectID as string);
+      const project = await ctx.readProject(projectID);
       if (!project) {
         throw new Error(`Project not found: ${projectID}`);
       }
 
       const projectName = project.name || `brandly-${projectID.slice(0, 8)}`;
 
-      // Discover all generated assets
       const mediaFolders = ["imagen", "videgen", "audgen"];
       const allAssets: ClipAsset[] = [];
 
       for (const folder of mediaFolders) {
-        const mediaDir = join(ctx.directory, folder, projectID as string);
+        const mediaDir = join(ctx.directory, folder, projectID);
         const assets = await discoverMedia(mediaDir);
         allAssets.push(...assets);
       }
 
-      // Also check for assets in the project's artifacts
-      const projectDir = join(ctx.projectsDir, projectID as string);
+      const projectDir = join(ctx.projectsDir, projectID);
       const artifactsDir = join(projectDir, "artifacts");
       const artifactAssets = await discoverMedia(artifactsDir);
       allAssets.push(...artifactAssets);
@@ -392,9 +345,8 @@ export function createAssemblyTool(ctx: ToolContext) {
         );
       }
 
-      // Apply clip ordering if provided
       let orderedAssets = allAssets;
-      if (clipOrder && Array.isArray(clipOrder) && clipOrder.length > 0) {
+      if (clipOrder && clipOrder.length > 0) {
         const orderMap = new Map(clipOrder.map((name, i) => [name, i]));
         orderedAssets = [...allAssets].sort((a, b) => {
           const aIdx = orderMap.has(a.name) ? orderMap.get(a.name)! : Infinity;
@@ -403,22 +355,13 @@ export function createAssemblyTool(ctx: ToolContext) {
         });
       }
 
-      // Generate assembly plan
       const plan = generateAssemblyPlan(
         orderedAssets,
-        {
-          fps,
-          width,
-          height,
-          clipDuration,
-          transitionType,
-          transitionDuration,
-        },
-        (style as string) || "montage"
+        { fps, width, height, clipDuration, transitionType, transitionDuration },
+        style
       );
 
-      // Create the Remotion project directory
-      const assemblyDir = join(ctx.directory, "assembly", projectID as string);
+      const assemblyDir = join(ctx.directory, "assembly", projectID);
       const srcDir = join(assemblyDir, "src");
       const assetsDir = join(assemblyDir, "assets");
       const outDir = join(assemblyDir, "out");
@@ -427,7 +370,6 @@ export function createAssemblyTool(ctx: ToolContext) {
       await mkdir(assetsDir, { recursive: true });
       await mkdir(outDir, { recursive: true });
 
-      // Copy assets to the Remotion project's assets folder
       const copiedAssets: string[] = [];
       for (const asset of orderedAssets) {
         const srcPath = asset.path;
@@ -439,30 +381,24 @@ export function createAssemblyTool(ctx: ToolContext) {
         copiedAssets.push(asset.name);
       }
 
-      // Generate the Remotion composition
       const compositionCode = generateRemotionProject(plan, projectName);
       await writeFile(join(srcDir, "Composition.tsx"), compositionCode, "utf-8");
 
-      // Generate root index
       const rootIndex = generateRootIndex(projectName);
       await writeFile(join(srcDir, "index.ts"), rootIndex, "utf-8");
 
-      // Generate remotion config
-      const remotionConfig = generateRemotionConfig(projectName);
+      const remotionConfig = generateRemotionConfig();
       await writeFile(join(assemblyDir, "remotion.config.ts"), remotionConfig, "utf-8");
 
-      // Generate package.json
       const packageJson = generatePackageJson(projectName);
       await writeFile(join(assemblyDir, "package.json"), packageJson, "utf-8");
 
-      // Generate build script
       const finalOutputPath =
         outputPath || join(outDir, `${projectName.toLowerCase().replace(/\s+/g, "-")}.mp4`);
       const buildScript = generateBuildScript(assemblyDir, finalOutputPath);
       const buildScriptPath = join(assemblyDir, "build.sh");
       await writeFile(buildScriptPath, buildScript, "utf-8");
 
-      // Save assembly metadata
       const assemblyMeta = {
         id: `assembly-${Date.now()}`,
         projectId: projectID,
@@ -485,7 +421,6 @@ export function createAssemblyTool(ctx: ToolContext) {
       const metaPath = join(assemblyDir, "assembly-meta.json");
       await writeFile(metaPath, JSON.stringify(assemblyMeta, null, 2), "utf-8");
 
-      // Update project with assembly info
       if (!project.phases) {
         project.phases = {};
       }
@@ -517,7 +452,7 @@ export function createAssemblyTool(ctx: ToolContext) {
 
       project.phases[currentPhase].output = JSON.stringify(phaseOutput);
       project.updatedAt = new Date().toISOString();
-      await ctx.writeProject(projectID as string, project);
+      await ctx.writeProject(projectID, project);
 
       const nextSteps = [
         `1. cd ${assemblyDir}`,
@@ -532,21 +467,23 @@ export function createAssemblyTool(ctx: ToolContext) {
       }
 
       return {
-        projectId: projectID,
-        assemblyId: assemblyMeta.id,
-        projectName,
-        style: plan.style,
-        assemblyDir,
-        segmentCount: plan.segments.length,
-        totalDuration: `${plan.totalDuration.toFixed(1)}s`,
-        clips: copiedAssets,
-        backgroundMusic: plan.backgroundMusic?.name || null,
-        compositionPath: join(srcDir, "Composition.tsx"),
-        outputPath: finalOutputPath,
-        status: "created",
-        message: `Remotion assembly project created with ${plan.segments.length} clips (${plan.totalDuration.toFixed(1)}s total)`,
-        nextSteps,
+        output: JSON.stringify({
+          projectId: projectID,
+          assemblyId: assemblyMeta.id,
+          projectName,
+          style: plan.style,
+          assemblyDir,
+          segmentCount: plan.segments.length,
+          totalDuration: `${plan.totalDuration.toFixed(1)}s`,
+          clips: copiedAssets,
+          backgroundMusic: plan.backgroundMusic?.name || null,
+          compositionPath: join(srcDir, "Composition.tsx"),
+          outputPath: finalOutputPath,
+          status: "created",
+          message: `Remotion assembly project created with ${plan.segments.length} clips (${plan.totalDuration.toFixed(1)}s total)`,
+          nextSteps,
+        }),
       };
     },
-  };
+  });
 }

@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { readdir, readFile, mkdir, copyFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { tool } from "@opencode-ai/plugin";
 import type { ToolContext } from "../types";
 import { isValidProjectId, PHASE_ORDER } from "../constants";
 
@@ -61,55 +62,41 @@ async function collectMedia(dir: string): Promise<string[]> {
 }
 
 export function createExportTool(ctx: ToolContext) {
-  return {
-    name: "brandly_export",
+  return tool({
     description:
       "Export a completed Brandly project — collect all artifacts, create a manifest, and optionally copy to a specified output path.",
-    parameters: {
-      type: "object",
-      properties: {
-        projectID: {
-          type: "string",
-          description: "The project UUID",
-        },
-        outputPath: {
-          type: "string",
-          description:
-            "Optional custom output path. Defaults to .brandly/projects/{id}/export/",
-        },
-      },
-      required: ["projectID"],
+    args: {
+      projectID: tool.schema.string().describe("The project UUID"),
+      outputPath: tool.schema
+        .string()
+        .optional()
+        .describe("Optional custom output path. Defaults to .brandly/projects/{id}/export/"),
     },
-    execute: async (args: Record<string, unknown>) => {
-      const { projectID, outputPath } = args;
-
-      if (!isValidProjectId(projectID as string)) {
+    async execute(args) {
+      if (!isValidProjectId(args.projectID)) {
         throw new Error("Invalid project ID format");
       }
 
-      const project = await ctx.readProject(projectID as string);
+      const project = await ctx.readProject(args.projectID);
       if (!project) {
-        throw new Error(`Project not found: ${projectID}`);
+        throw new Error(`Project not found: ${args.projectID}`);
       }
 
-      const projectDir = join(ctx.projectsDir, projectID as string);
+      const projectDir = join(ctx.projectsDir, args.projectID);
       const artifactsBase = join(projectDir, "artifacts");
-      const exportDir =
-        (outputPath as string) || join(projectDir, "export");
+      const exportDir = args.outputPath || join(projectDir, "export");
 
       await mkdir(exportDir, { recursive: true });
 
       const phases = (project.phases as Record<string, any>) || {};
       const artifactFiles: string[] = [];
 
-      // Collect artifacts from each phase
       for (const phase of PHASE_ORDER) {
         const phaseDir = join(artifactsBase, phase);
         const files = await collectArtifacts(phaseDir);
         artifactFiles.push(...files);
       }
 
-      // Copy artifacts to export directory
       for (const src of artifactFiles) {
         const rel = src.replace(artifactsBase, "").replace(/^[/\\]/, "");
         const dest = join(exportDir, rel);
@@ -118,22 +105,18 @@ export function createExportTool(ctx: ToolContext) {
         await copyFile(src, dest);
       }
 
-      // Collect and copy media files from imagen, videgen, audgen folders
       const mediaFolders = ["imagen", "videgen", "audgen"];
       const mediaFiles: string[] = [];
 
       for (const folder of mediaFolders) {
-        const mediaDir = join(ctx.directory, folder, projectID as string);
+        const mediaDir = join(ctx.directory, folder, args.projectID);
         const files = await collectMedia(mediaDir);
         mediaFiles.push(...files);
       }
 
-      // Copy media files to export directory
       for (const src of mediaFiles) {
-        // Find which folder this media came from
         const folderMatch = src.match(/\\(imagen|videgen|audgen)\\/);
         const folder = folderMatch ? folderMatch[1] : "media";
-        
         const rel = src.replace(join(ctx.directory, folder), "").replace(/^[/\\]/, "");
         const dest = join(exportDir, folder, rel);
         const destDir = join(dest, "..");
@@ -154,7 +137,7 @@ export function createExportTool(ctx: ToolContext) {
       }
 
       const manifest = {
-        projectId: projectID,
+        projectId: args.projectID,
         projectName: project.name,
         description: project.description,
         style: project.style,
@@ -180,17 +163,19 @@ export function createExportTool(ctx: ToolContext) {
       await ctx.writeAtomic(manifestPath, JSON.stringify(manifest, null, 2));
 
       return {
-        projectId: projectID,
-        projectName: project.name,
-        exportDir,
-        artifactCount: artifactFiles.length,
-        mediaCount: mediaFiles.length,
-        totalFiles: artifactFiles.length + mediaFiles.length,
-        manifest: `export-manifest.json`,
-        artifacts: manifest.artifacts,
-        mediaFiles: manifest.mediaFiles,
-        message: `Exported ${artifactFiles.length} artifacts and ${mediaFiles.length} media files to ${exportDir}`,
+        output: JSON.stringify({
+          projectId: args.projectID,
+          projectName: project.name,
+          exportDir,
+          artifactCount: artifactFiles.length,
+          mediaCount: mediaFiles.length,
+          totalFiles: artifactFiles.length + mediaFiles.length,
+          manifest: "export-manifest.json",
+          artifacts: manifest.artifacts,
+          mediaFiles: manifest.mediaFiles,
+          message: `Exported ${artifactFiles.length} artifacts and ${mediaFiles.length} media files to ${exportDir}`,
+        }),
       };
     },
-  };
+  });
 }

@@ -1,36 +1,23 @@
+import { tool } from "@opencode-ai/plugin";
 import type { ToolContext } from "../types";
 import { isValidProjectId, PHASE_ORDER } from "../constants";
 
 export function createApproveTool(ctx: ToolContext) {
-  return {
-    name: "brandly_approve",
+  return tool({
     description:
       "Approve the current phase output and advance the pipeline to the next phase. Must be called after each agent completes to proceed.",
-    parameters: {
-      type: "object",
-      properties: {
-        projectID: {
-          type: "string",
-          description: "The project UUID",
-        },
-        phase: {
-          type: "string",
-          enum: PHASE_ORDER,
-          description: "The phase being approved",
-        },
-      },
-      required: ["projectID", "phase"],
+    args: {
+      projectID: tool.schema.string().describe("The project UUID"),
+      phase: tool.schema.enum(PHASE_ORDER).describe("The phase being approved"),
     },
-    execute: async (args: Record<string, unknown>) => {
-      const { projectID, phase } = args;
-
-      if (!isValidProjectId(projectID as string)) {
+    async execute(args) {
+      if (!isValidProjectId(args.projectID)) {
         throw new Error("Invalid project ID format");
       }
 
-      const project = await ctx.readProject(projectID as string);
+      const project = await ctx.readProject(args.projectID);
       if (!project) {
-        throw new Error(`Project not found: ${projectID}`);
+        throw new Error(`Project not found: ${args.projectID}`);
       }
 
       if (project.status === "cancelled") {
@@ -45,21 +32,21 @@ export function createApproveTool(ctx: ToolContext) {
         throw new Error("Cannot approve — project is already completed");
       }
 
-      if (project.currentPhase !== phase) {
+      if (project.currentPhase !== args.phase) {
         throw new Error(
-          `Cannot approve phase "${phase}" — current phase is "${project.currentPhase}"`
+          `Cannot approve phase "${args.phase}" — current phase is "${project.currentPhase}"`
         );
       }
 
-      const currentIdx = PHASE_ORDER.indexOf(phase as any);
+      const currentIdx = PHASE_ORDER.indexOf(args.phase);
       const nextPhase =
         currentIdx < PHASE_ORDER.length - 1
           ? PHASE_ORDER[currentIdx + 1]
           : "done";
 
       const phases = (project.phases as Record<string, any>) || {};
-      phases[phase as string] = {
-        ...(phases[phase as string] || {}),
+      phases[args.phase] = {
+        ...(phases[args.phase] || {}),
         status: "completed",
         completedAt: new Date().toISOString(),
       };
@@ -75,15 +62,17 @@ export function createApproveTool(ctx: ToolContext) {
         updatedAt: new Date().toISOString(),
       };
 
-      await ctx.writeProject(projectID as string, updatedProject);
+      await ctx.writeProject(args.projectID, updatedProject);
 
       return {
-        projectId: projectID,
-        approvedPhase: phase,
-        nextPhase,
-        status: "approved",
-        message: `Phase "${phase}" approved. Next phase: "${nextPhase}"`,
+        output: JSON.stringify({
+          projectId: args.projectID,
+          approvedPhase: args.phase,
+          nextPhase,
+          status: "approved",
+          message: `Phase "${args.phase}" approved. Next phase: "${nextPhase}"`,
+        }),
       };
     },
-  };
+  });
 }

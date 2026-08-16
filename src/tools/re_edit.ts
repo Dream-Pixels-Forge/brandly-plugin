@@ -1,57 +1,40 @@
+import { tool } from "@opencode-ai/plugin";
 import type { ToolContext } from "../types";
 import { isValidProjectId } from "../constants";
 
 export function createReEditTool(ctx: ToolContext) {
-  return {
-    name: "brandly_re_edit",
+  return tool({
     description:
       "Re-edit a specific shot in the project. Provide the shot ID and a new prompt/description. The pipeline will regenerate that shot.",
-    parameters: {
-      type: "object",
-      properties: {
-        projectID: {
-          type: "string",
-          description: "The project UUID",
-        },
-        shotId: {
-          type: "number",
-          description: "The shot ID to re-edit",
-        },
-        newPrompt: {
-          type: "string",
-          description: "New prompt for the shot",
-        },
-        reason: {
-          type: "string",
-          description: "Why you're re-editing this shot",
-        },
-      },
-      required: ["projectID", "shotId", "newPrompt", "reason"],
+    args: {
+      projectID: tool.schema.string().describe("The project UUID"),
+      shotId: tool.schema.number().describe("The shot ID to re-edit"),
+      newPrompt: tool.schema.string().describe("New prompt for the shot"),
+      reason: tool.schema.string().describe("Why you're re-editing this shot"),
     },
-    execute: async (args: Record<string, unknown>) => {
-      const { projectID, shotId, newPrompt, reason } = args;
-
-      if (!isValidProjectId(projectID as string)) {
+    async execute(args) {
+      if (!isValidProjectId(args.projectID)) {
         throw new Error("Invalid project ID format");
       }
 
-      const project = await ctx.readProject(projectID as string);
+      const project = await ctx.readProject(args.projectID);
       if (!project) {
-        throw new Error(`Project not found: ${projectID}`);
+        throw new Error(`Project not found: ${args.projectID}`);
       }
 
-      // Dispatch to script agent for re-editing
       const agentFile = "script_agent.md";
 
       return {
-        projectId: projectID,
-        shotId,
-        newPrompt,
-        reason,
-        agent: agentFile,
-        status: "re_editing",
-        message: `Re-editing shot ${shotId}: ${reason}`,
+        output: JSON.stringify({
+          projectId: args.projectID,
+          shotId: args.shotId,
+          newPrompt: args.newPrompt,
+          reason: args.reason,
+          agent: agentFile,
+          status: "re_editing",
+          message: `Re-editing shot ${args.shotId}: ${args.reason}`,
+        }),
       };
     },
-  };
+  });
 }

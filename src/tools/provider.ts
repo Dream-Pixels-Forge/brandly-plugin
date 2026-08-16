@@ -1,3 +1,4 @@
+import { tool } from "@opencode-ai/plugin";
 import type { ToolContext } from "../types";
 import { isValidProjectId } from "../constants";
 
@@ -124,62 +125,52 @@ export const AVAILABLE_PROVIDERS: ProviderConfig[] = [
 ];
 
 export function createProviderTool(ctx: ToolContext) {
-  return {
-    name: "brandly_select_provider",
+  return tool({
     description:
       "Select the AI generation provider for the Brandly pipeline. Shows available providers and lets the user choose their preferred platform for image/video generation.",
-    parameters: {
-      type: "object",
-      properties: {
-        projectID: {
-          type: "string",
-          description: "The project UUID (optional — if provided, saves provider preference to project)",
-        },
-        providerId: {
-          type: "string",
-          enum: AVAILABLE_PROVIDERS.map(p => p.id),
-          description: "Provider ID to select (if known). If not provided, shows available providers.",
-        },
-        listOnly: {
-          type: "boolean",
-          description: "If true, only lists available providers without selecting one",
-        },
-      },
-      required: [],
+    args: {
+      projectID: tool.schema
+        .string()
+        .optional()
+        .describe("The project UUID (optional — if provided, saves provider preference to project)"),
+      providerId: tool.schema
+        .enum(AVAILABLE_PROVIDERS.map((p) => p.id as any))
+        .optional()
+        .describe("Provider ID to select (if known). If not provided, shows available providers."),
+      listOnly: tool.schema
+        .boolean()
+        .optional()
+        .describe("If true, only lists available providers without selecting one"),
     },
-    execute: async (args: Record<string, unknown>) => {
-      const { projectID, providerId, listOnly } = args;
-
-      // If listOnly or no providerId, show available providers
-      if (listOnly || !providerId) {
-        const providers = AVAILABLE_PROVIDERS.map(p => ({
+    async execute(args) {
+      if (args.listOnly || !args.providerId) {
+        const providers = AVAILABLE_PROVIDERS.map((p) => ({
           id: p.id,
           name: p.name,
           description: p.description,
           capabilities: p.capabilities,
-          models: p.models.slice(0, 5), // Show first 5 models
-          bestFor: p.bestFor.slice(0, 3), // Show first 3 use cases
+          models: p.models.slice(0, 5),
+          bestFor: p.bestFor.slice(0, 3),
         }));
 
         return {
-          status: "listed",
-          providers,
-          message: `Found ${providers.length} available providers. Select one by ID.`,
-          recommendation: getProviderRecommendation(),
+          output: JSON.stringify({
+            status: "listed",
+            providers,
+            message: `Found ${providers.length} available providers. Select one by ID.`,
+            recommendation: getProviderRecommendation(),
+          }),
         };
       }
 
-      // Find the selected provider
-      const provider = AVAILABLE_PROVIDERS.find(p => p.id === providerId);
+      const provider = AVAILABLE_PROVIDERS.find((p) => p.id === args.providerId);
       if (!provider) {
-        throw new Error(`Provider not found: ${providerId}`);
+        throw new Error(`Provider not found: ${args.providerId}`);
       }
 
-      // Save to project if projectID provided
-      if (projectID) {
-        const project = await ctx.readProject(projectID as string);
+      if (args.projectID) {
+        const project = await ctx.readProject(args.projectID);
         if (project) {
-          // Store provider preference in project state
           if (!project.phases) {
             project.phases = {};
           }
@@ -192,7 +183,6 @@ export function createProviderTool(ctx: ToolContext) {
             };
           }
 
-          // Store provider config in phase output
           const phaseOutput = project.phases[currentPhase].output
             ? JSON.parse(project.phases[currentPhase].output || "{}")
             : {};
@@ -205,28 +195,30 @@ export function createProviderTool(ctx: ToolContext) {
 
           project.phases[currentPhase].output = JSON.stringify(phaseOutput);
           project.updatedAt = new Date().toISOString();
-          await ctx.writeProject(projectID as string, project);
+          await ctx.writeProject(args.projectID, project);
         }
       }
 
       return {
-        projectId: projectID,
-        provider: {
-          id: provider.id,
-          name: provider.name,
-          description: provider.description,
-          capabilities: provider.capabilities,
-          models: provider.models,
-          bestFor: provider.bestFor,
-          cliCommand: provider.cliCommand,
-          mcpTool: provider.mcpTool,
-        },
-        status: "selected",
-        message: `Selected ${provider.name} for media generation`,
-        usage: getProviderUsage(provider),
+        output: JSON.stringify({
+          projectId: args.projectID,
+          provider: {
+            id: provider.id,
+            name: provider.name,
+            description: provider.description,
+            capabilities: provider.capabilities,
+            models: provider.models,
+            bestFor: provider.bestFor,
+            cliCommand: provider.cliCommand,
+            mcpTool: provider.mcpTool,
+          },
+          status: "selected",
+          message: `Selected ${provider.name} for media generation`,
+          usage: getProviderUsage(provider),
+        }),
       };
     },
-  };
+  });
 }
 
 function getProviderRecommendation(): string {

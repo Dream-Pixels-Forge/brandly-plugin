@@ -1,6 +1,6 @@
+import { tool } from "@opencode-ai/plugin/tool";
 import { join } from "node:path";
-import { mkdir, writeFile, readFile } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { mkdir, writeFile } from "node:fs/promises";
 import type { ToolContext } from "../types";
 import { isValidProjectId } from "../constants";
 
@@ -24,98 +24,57 @@ export interface RemotionProject {
 }
 
 export function createVideoEditTool(ctx: ToolContext) {
-  return {
+  return tool({
     name: "brandly_video_edit",
     description:
       "Edit videos using Remotion — trim, concat, overlay, add transitions, text, audio, effects. Creates Remotion compositions for programmatic video editing.",
-    parameters: {
-      type: "object",
-      properties: {
-        projectID: {
-          type: "string",
-          description: "The project UUID",
-        },
-        operation: {
-          type: "string",
-          enum: [
-            "trim",
-            "concat",
-            "overlay",
-            "transition",
-            "add-text",
-            "add-audio",
-            "add-effect",
-            "resize",
-            "crop",
-            "render",
-          ],
-          description: "Video editing operation to perform",
-        },
-        inputFiles: {
-          type: "array",
-          items: { type: "string" },
-          description: "Input video file paths or URLs",
-        },
-        params: {
-          type: "object",
-          description: "Operation-specific parameters",
-        },
-        outputFormat: {
-          type: "string",
-          enum: ["mp4", "webm", "gif"],
-          default: "mp4",
-          description: "Output video format",
-        },
-      },
-      required: ["projectID", "operation", "inputFiles"],
+    args: {
+      projectID: tool.schema.string({ description: "The project UUID" }),
+      operation: tool.schema.enum(
+        ["trim", "concat", "overlay", "transition", "add-text", "add-audio", "add-effect", "resize", "crop", "render"],
+        { description: "Video editing operation to perform" }
+      ),
+      inputFiles: tool.schema.array(tool.schema.string(), { description: "Input video file paths or URLs" }),
+      params: tool.schema.record({ description: "Operation-specific parameters" }),
+      outputFormat: tool.schema.enum(["mp4", "webm", "gif"], { description: "Output video format", default: "mp4" }),
     },
-    execute: async (args: Record<string, unknown>) => {
-      const { projectID, operation, inputFiles, params, outputFormat } = args;
+    execute: async (args) => {
+      const { projectID, operation, inputFiles, params = {}, outputFormat = "mp4" } = args;
 
-      if (!isValidProjectId(projectID as string)) {
+      if (!isValidProjectId(projectID)) {
         throw new Error("Invalid project ID format");
       }
 
-      const project = await ctx.readProject(projectID as string);
+      const project = await ctx.readProject(projectID);
       if (!project) {
         throw new Error(`Project not found: ${projectID}`);
       }
 
-      // Create video edit directory
-      const editDir = join(ctx.directory, "video-edits", projectID as string);
+      const editDir = join(ctx.directory, "video-edits", projectID);
       await mkdir(editDir, { recursive: true });
 
-      // Generate Remotion composition based on operation
-      const composition = generateRemotionComposition(
-        operation as string,
-        inputFiles as string[],
-        params as Record<string, unknown>,
-        outputFormat as string
-      );
+      const composition = generateRemotionComposition(operation, inputFiles, params, outputFormat);
 
-      // Save composition file
-      const compositionPath = join(editDir, `composition-${Date.now().tsx}`);
+      const compositionPath = join(editDir, `composition-${Date.now()}.tsx`);
       await writeFile(compositionPath, composition, "utf-8");
 
-      // Save edit metadata
       const editMeta: RemotionProject = {
         id: `edit-${Date.now()}`,
         name: `${operation}-edit`,
         composition: compositionPath,
         fps: 30,
-        durationInFrames: 300, // 10 seconds default
+        durationInFrames: 300,
         width: 1920,
         height: 1080,
-        operations: [{ type: operation as any, params: params as Record<string, unknown> }],
-        inputFiles: inputFiles as string[],
-        outputFormat: (outputFormat as any) || "mp4",
+        operations: [{ type: operation as VideoEditOperation["type"], params }],
+        inputFiles,
+        outputFormat: outputFormat as RemotionProject["outputFormat"],
         status: "pending",
       };
 
       const metaPath = join(editDir, `edit-${editMeta.id}.json`);
       await writeFile(metaPath, JSON.stringify(editMeta, null, 2), "utf-8");
 
-      // Update project with edit info
       if (!project.phases) {
         project.phases = {};
       }
@@ -147,26 +106,28 @@ export function createVideoEditTool(ctx: ToolContext) {
 
       project.phases[currentPhase].output = JSON.stringify(phaseOutput);
       project.updatedAt = new Date().toISOString();
-      await ctx.writeProject(projectID as string, project);
+      await ctx.writeProject(projectID, project);
 
       return {
-        projectId: projectID,
-        editId: editMeta.id,
-        operation,
-        compositionPath,
-        inputFiles,
-        outputFormat,
-        status: "created",
-        message: `Video edit composition created: ${compositionPath}`,
-        nextSteps: [
-          "1. Review the generated Remotion composition",
-          "2. Install Remotion if not present: npm i -g remotion",
-          "3. Render the video: remotion render <composition-path>",
-          "4. Or use brandly_render_video tool to render",
-        ],
+        output: JSON.stringify({
+          projectId: projectID,
+          editId: editMeta.id,
+          operation,
+          compositionPath,
+          inputFiles,
+          outputFormat,
+          status: "created",
+          message: `Video edit composition created: ${compositionPath}`,
+          nextSteps: [
+            "1. Review the generated Remotion composition",
+            "2. Install Remotion if not present: npm i -g remotion",
+            "3. Render the video: remotion render <composition-path>",
+            "4. Or use brandly_render_video tool to render",
+          ],
+        }),
       };
     },
-  };
+  });
 }
 
 function generateRemotionComposition(
@@ -248,14 +209,13 @@ function generateConcatComposition(
   height: number,
   fps: number
 ): string {
-  const transitionDuration = (params.transitionDuration as number) || 1;
-  const totalDuration = inputs.length * 3; // 3 seconds per clip default
+  const totalDuration = inputs.length * 3;
 
   return `import { Composition, Sequence, Video, staticFile } from 'remotion';
 
 const ConcatenatedVideo = () => {
   const clips = [
-    ${inputs.map((input, i) => `"${input}"`).join(',\n    ')}
+    ${inputs.map((input) => `"${input}"`).join(",\n    ")}
   ];
 
   return (
@@ -314,8 +274,8 @@ const OverlayVideo = () => {
         src={staticFile('${inputs[1] || inputs[0]}')}
         style={{
           position: 'absolute',
-          ${overlayPosition.includes('top') ? 'top: 20px' : 'bottom: 20px'},
-          ${overlayPosition.includes('left') ? 'left: 20px' : 'right: 20px'},
+          ${overlayPosition.includes("top") ? "top: 20px" : "bottom: 20px"},
+          ${overlayPosition.includes("left") ? "left: 20px" : "right: 20px"},
           width: '${overlayScale * 100}%',
           borderRadius: '8px',
           boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
@@ -333,7 +293,7 @@ export const RemotionComposition = () => {
       durationInFrames={${10 * fps}}
       fps={${fps}}
       width={${width}}
-      height={${height}}
+      height=${height}
     />
   );
 };
@@ -347,7 +307,6 @@ function generateTransitionComposition(
   height: number,
   fps: number
 ): string {
-  const transitionType = (params.transitionType as string) || "fade";
   const transitionDuration = (params.transitionDuration as number) || 1;
 
   return `import { Composition, Sequence, Video, staticFile, interpolate, useCurrentFrame } from 'remotion';
@@ -425,7 +384,7 @@ const TextOverlayVideo = () => {
         text="${text}"
         style={{
           position: 'absolute',
-          ${position === "center" ? "top: 50%, left: 50%, transform: 'translate(-50%, -50%)" : 
+          ${position === "center" ? "top: 50%, left: 50%, transform: 'translate(-50%, -50%)" :
             position === "top" ? "top: 10%" : "bottom: 10%"},
           fontSize: ${fontSize},
           color: '${color}',

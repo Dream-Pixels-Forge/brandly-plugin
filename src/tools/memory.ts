@@ -1,71 +1,66 @@
+import { tool } from "@opencode-ai/plugin";
 import { Memory } from "../memory";
 import type { ToolContext } from "../types";
 
 export function createMemoryTool(ctx: ToolContext) {
   const memory = new Memory(ctx.directory);
 
-  return {
-    name: "brandly_memory",
+  return tool({
     description:
       "View or update your Brandly preferences. Like/dislike hooks, set preferred style, or reset memory.",
-    parameters: {
-      type: "object",
-      properties: {
-        action: {
-          type: "string",
-          enum: ["view", "like_hook", "dislike_hook", "reset"],
-          description: "Action to perform",
-        },
-        hook: {
-          type: "string",
-          description: "Hook text to like or dislike",
-        },
-      },
-      required: ["action"],
+    args: {
+      action: tool.schema
+        .enum(["view", "like_hook", "dislike_hook", "reset"])
+        .describe("Action to perform"),
+      hook: tool.schema.string().optional().describe("Hook text to like or dislike"),
     },
-    execute: async (args: Record<string, unknown>) => {
-      const { action, hook } = args;
-
-      switch (action) {
+    async execute(args) {
+      switch (args.action) {
         case "view": {
           const prefs = memory.get();
           return {
-            exists: memory.exists(),
-            preferences: prefs,
-            message: memory.exists()
-              ? "Loaded existing preferences"
-              : "No preferences found",
+            output: JSON.stringify({
+              exists: memory.exists(),
+              preferences: prefs,
+              message: memory.exists()
+                ? "Loaded existing preferences"
+                : "No preferences found",
+            }),
           };
         }
 
         case "like_hook": {
-          if (!hook) throw new Error("Hook text required");
+          if (!args.hook) throw new Error("Hook text required");
           const current = memory.get();
           const liked = current.likedHooks || [];
-          if (!liked.includes(hook as string)) {
-            liked.push(hook as string);
+          if (!liked.includes(args.hook)) {
+            liked.push(args.hook);
           }
           const disliked = (current.dislikedHooks || []).filter(
-            (h: string) => h !== hook
+            (h: string) => h !== args.hook
           );
           memory.update({ likedHooks: liked, dislikedHooks: disliked });
           await memory.save();
-          return { liked: hook, message: `Liked hook: "${hook}"` };
+          return {
+            output: JSON.stringify({ liked: args.hook, message: `Liked hook: "${args.hook}"` }),
+          };
         }
 
         case "dislike_hook": {
-          if (!hook) throw new Error("Hook text required");
+          if (!args.hook) throw new Error("Hook text required");
           const current = memory.get();
           const disliked = current.dislikedHooks || [];
-          if (!disliked.includes(hook as string)) {
-            disliked.push(hook as string);
+          if (!disliked.includes(args.hook)) {
+            disliked.push(args.hook);
           }
           const liked = (current.likedHooks || []).filter(
-            (h: string) => h !== hook
+            (h: string) => h !== args.hook
           );
           memory.update({ likedHooks: liked, dislikedHooks: disliked });
           await memory.save();
-          return { disliked: hook, message: `Disliked hook: "${hook}"` };
+          return {
+            output: JSON.stringify({ disliked: args.hook, message: `Disliked hook: "${args.hook}"` }),
+          };
         }
 
         case "reset": {
@@ -76,12 +71,14 @@ export function createMemoryTool(ctx: ToolContext) {
             lastUsedStyle: undefined,
           });
           await memory.save();
-          return { message: "Memory reset" };
+          return {
+            output: JSON.stringify({ message: "Memory reset" }),
+          };
         }
 
         default:
-          throw new Error(`Unknown action: ${action}`);
+          throw new Error(`Unknown action: ${args.action}`);
       }
     },
-  };
+  });
 }
