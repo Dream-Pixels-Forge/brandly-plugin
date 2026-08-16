@@ -1,22 +1,28 @@
+import { useState, useEffect } from 'react'
 import PipelineBar from '../components/PipelineBar'
 import ViralityMeter from '../components/ViralityMeter'
 import { statusBadge } from '../utils/statusBadge'
+import { getHistory, getCosts } from '../api/client'
 import type { Project } from '../types'
+import type { HistoryEntry, CostEntry } from '../api/client'
 
-interface Props { project: Project }
-
-const HISTORY = [
-  { icon: '✅', msg: 'Script phase approved — 6 shots defined.', time: '2m ago' },
-  { icon: '🎥', msg: 'Asset phase dispatched → asset_agent running.', time: '5m ago' },
-  { icon: '💡', msg: 'Concept approved — "Gravity Drop" selected.', time: '22m ago' },
-  { icon: '📈', msg: 'Trends research complete — viral formats identified.', time: '1h ago' },
-  { icon: '🎬', msg: 'Project created — budget: 500 credits.', time: '2h ago' },
-]
+interface Props {
+  project: Project
+  onRefresh: () => void
+}
 
 export default function OverviewPage({ project }: Props) {
+  const [history, setHistory] = useState<HistoryEntry[]>([])
+  const [costs, setCosts] = useState<CostEntry[]>([])
+
+  useEffect(() => {
+    getHistory(project.id).then(setHistory).catch(() => {})
+    getCosts(project.id).then(setCosts).catch(() => {})
+  }, [project.id])
+
   const completedPhases = project.phases.filter(p => p.status === 'completed').length
   const totalPhases = project.phases.length
-  const pctDone = Math.round((completedPhases / totalPhases) * 100)
+  const pctDone = totalPhases > 0 ? Math.round((completedPhases / totalPhases) * 100) : 0
 
   return (
     <>
@@ -43,7 +49,9 @@ export default function OverviewPage({ project }: Props) {
       <div className="card">
         <div className="card-header">
           <span className="card-title">Production Pipeline</span>
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Current: <strong style={{ color: 'var(--text-primary)' }}>{project.currentPhase}</strong></span>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+            Current: <strong style={{ color: 'var(--text-primary)' }}>{project.currentPhase}</strong>
+          </span>
         </div>
         <PipelineBar phases={project.phases} currentPhase={project.currentPhase} />
       </div>
@@ -66,52 +74,47 @@ export default function OverviewPage({ project }: Props) {
 
         <div className="card">
           <div className="card-header">
-            <span className="card-title">Video Preview</span>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Remotion Player</span>
+            <span className="card-title">Cost Summary</span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{costs.length} entries</span>
           </div>
-          <div className="preview-layout">
-            <div className="preview-panel">
-              <div className="preview-placeholder">
-                <div className="icon">🎞</div>
-                <div className="preview-text">
-                  {project.status === 'running' ? 'Rendering…' : 'No preview yet'}
-                </div>
-              </div>
-            </div>
-            <div className="preview-meta">
-              <div className="preview-meta-title">Composition</div>
-              {[
-                ['Format', '9:16 Vertical (1080×1920)'],
-                ['Duration', '15s · 30fps'],
-                ['Shots', '6 clips'],
-                ['Audio', 'Track + SFX'],
-                ['Provider', project.provider],
-              ].map(([k, v]) => (
-                <div key={k} className="preview-meta-row">
-                  <span className="preview-meta-key">{k}</span>
-                  <span className="preview-meta-val">{v}</span>
+          {costs.length === 0 ? (
+            <div className="empty-virality">No costs recorded yet.</div>
+          ) : (
+            <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+              {costs.slice(-5).reverse().map((c, i) => (
+                <div key={i} className="log-entry">
+                  <span className="log-icon">💰</span>
+                  <div className="log-body">
+                    <div className="log-msg">{c.amount} credits — {c.description}</div>
+                    <div className="log-time">{c.phase} · {new Date(c.ts).toLocaleTimeString()}</div>
+                  </div>
                 </div>
               ))}
-              <button className="btn btn-ghost preview-btn">▶ Open in Remotion</button>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
       <div className="card">
         <div className="card-header">
           <span className="card-title">History Log</span>
-          <button className="btn btn-ghost btn-sm">View Full Log</button>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{history.length} events</span>
         </div>
-        {HISTORY.map((e, i) => (
-          <div key={i} className="log-entry">
-            <span className="log-icon">{e.icon}</span>
-            <div className="log-body">
-              <div className="log-msg">{e.msg}</div>
-              <div className="log-time">{e.time}</div>
-            </div>
+        {history.length === 0 ? (
+          <div className="empty-virality">No history yet.</div>
+        ) : (
+          <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+            {history.slice().reverse().map((e, i) => (
+              <div key={i} className="log-entry">
+                <span className="log-icon">{e.icon}</span>
+                <div className="log-body">
+                  <div className="log-msg">{e.msg}</div>
+                  <div className="log-time">{new Date(e.ts).toLocaleString()}</div>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </div>
     </>
   )

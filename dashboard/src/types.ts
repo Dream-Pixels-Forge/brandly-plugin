@@ -34,4 +34,6 @@ export interface Project {
   provider: string
   platform: string[]
   createdAt: string
+  description?: string
+  style?: string
 }

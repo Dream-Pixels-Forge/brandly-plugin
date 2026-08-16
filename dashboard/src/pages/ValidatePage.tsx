@@ -1,18 +1,36 @@
 import ViralityMeter from '../components/ViralityMeter'
+import { reEditFromPhase } from '../api/client'
+import { useState } from 'react'
 import type { Project } from '../types'
 
-interface Props { project: Project }
+interface Props {
+  project: Project
+  onRefresh: () => void
+}
 
 const THRESHOLDS = [
-  { range: '> 70',  label: 'Ready to publish',         color: 'var(--accent)',        icon: '🚀' },
+  { range: '> 70', label: 'Ready to publish', color: 'var(--accent)', icon: '🚀' },
   { range: '50–70', label: 'Minor improvements needed', color: 'var(--phase-running)', icon: '⚡' },
-  { range: '< 50',  label: 'Must re-edit',              color: 'var(--phase-failed)',  icon: '✕' },
-  { range: 'DM > 60', label: 'Too much mind-wandering', color: 'var(--phase-failed)',  icon: '⚠️' },
+  { range: '< 50', label: 'Must re-edit', color: 'var(--phase-failed)', icon: '✕' },
+  { range: 'DM > 60', label: 'Too much mind-wandering', color: 'var(--phase-failed)', icon: '⚠️' },
 ]
 
-export default function ValidatePage({ project }: Props) {
+export default function ValidatePage({ project, onRefresh }: Props) {
+  const [reEditLoading, setReEditLoading] = useState(false)
   const score = project.virality?.overallScore ?? null
   const defaultMode = project.virality?.regions.find(r => r.name === 'Default Mode')?.score ?? null
+
+  const handleReEdit = async () => {
+    setReEditLoading(true)
+    try {
+      await reEditFromPhase(project.id, project.currentPhase)
+      onRefresh()
+    } catch (e: any) {
+      alert(e.message)
+    } finally {
+      setReEditLoading(false)
+    }
+  }
 
   return (
     <>
@@ -54,9 +72,9 @@ export default function ValidatePage({ project }: Props) {
         <div className="thresholds-list">
           {THRESHOLDS.map(t => {
             const isActive =
-              (t.range === '> 70'    && score !== null && score >= 70) ||
-              (t.range === '50–70'   && score !== null && score >= 50 && score < 70) ||
-              (t.range === '< 50'    && score !== null && score < 50) ||
+              (t.range === '> 70' && score !== null && score >= 70) ||
+              (t.range === '50–70' && score !== null && score >= 50 && score < 70) ||
+              (t.range === '< 50' && score !== null && score < 50) ||
               (t.range === 'DM > 60' && defaultMode !== null && defaultMode > 60)
 
             return (
@@ -91,8 +109,11 @@ brandly_validate(
           <div className="re-edit-panel">
             <div className="re-edit-title">⚡ Re-edit Recommendation</div>
             <div className="re-edit-body">
-              Score is below threshold. Use <code className="inline-code">brandly_re_edit</code> to reshoot low-scoring shots, then re-render and re-validate.
+              Score is below threshold. Use the button below to reshoot low-scoring shots, then re-render and re-validate.
             </div>
+            <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={handleReEdit} disabled={reEditLoading}>
+              {reEditLoading ? 'Starting…' : '✂ Re-edit from Current Phase'}
+            </button>
           </div>
         )}
       </div>

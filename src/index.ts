@@ -27,6 +27,7 @@ import { createAutoCaptionTool } from "./tools/auto-caption"
 import { createSceneConsistencyTool } from "./tools/scene-consistency"
 import { createCharacterConsistencyTool } from "./tools/character-consistency"
 import { createMotionGraphicsTool } from "./tools/motion-graphics"
+import { createDashboardTool } from "./tools/dashboard"
 
 const DIRECTOR_MODE_PROMPT = `You are now in **Brandly Director Mode** — an autonomous video production pipeline.
 
@@ -51,6 +52,12 @@ After project initialization, follow this phase pipeline:
 7. **validate** — Quality checks and virality scoring
 8. **publish** — Export final video with captions
 
+## Dashboard
+When the user asks to **see information**, **view progress**, **check status**, **open dashboard**, or any similar request to visualize the project:
+- Call \`brandly_dashboard\` with action="open" to start the dashboard and get the URL
+- The dashboard shows real-time pipeline, virality scores, costs, artifacts, and history
+- If already running, it returns the existing URL
+
 ## Rules
 - Check \`brandly_status\` before each phase
 - Use \`brandly_estimate\` to check budget before expensive operations
@@ -58,6 +65,7 @@ After project initialization, follow this phase pipeline:
 - Record costs with \`brandly_record_cost\` after paid operations
 - Save artifacts with \`brandly_save_artifact\`
 - Track decisions with \`brandly_memory\`
+- When user wants to see project info, run \`brandly_dashboard\`
 
 ## Communication Style
 - Be concise and action-oriented
@@ -99,6 +107,7 @@ export const BrandlyPlugin: Plugin = async (input) => {
       brandly_scene_consistency: createSceneConsistencyTool(ctx),
       brandly_character_consistency: createCharacterConsistencyTool(ctx),
       brandly_motion_graphics: createMotionGraphicsTool(ctx),
+      brandly_dashboard: createDashboardTool(ctx),
     },
 
     "command.execute.before": async (input, output) => {

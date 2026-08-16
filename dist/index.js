@@ -17873,6 +17873,92 @@ function createMotionGraphicsTool(ctx) {
   });
 }
 
+// src/tools/dashboard.ts
+import { spawn } from "child_process";
+import { join as join18 } from "path";
+var serverProcess = null;
+var serverPort = 5175;
+function createDashboardTool(ctx) {
+  return tool({
+    description: "Open the Brandly Director Dashboard \u2014 a real-time web UI showing project pipeline, virality scores, costs, artifacts, and history. Starts the server if not running and returns the URL.",
+    args: {
+      action: tool.schema.enum(["open", "start", "stop", "status"]).default("open").describe("Dashboard action: open (start + return URL), start, stop, or check status")
+    },
+    async execute(args) {
+      if (args.action === "status") {
+        if (serverProcess && !serverProcess.killed) {
+          return {
+            output: JSON.stringify({
+              status: "running",
+              port: serverPort,
+              url: `http://localhost:${serverPort}`,
+              message: `Dashboard is running at http://localhost:${serverPort}`
+            })
+          };
+        }
+        return {
+          output: JSON.stringify({
+            status: "stopped",
+            message: "Dashboard server is not running. Use action='open' to start it."
+          })
+        };
+      }
+      if (args.action === "stop") {
+        if (serverProcess && !serverProcess.killed) {
+          serverProcess.kill();
+          serverProcess = null;
+          return {
+            output: JSON.stringify({
+              status: "stopped",
+              message: "Dashboard server stopped."
+            })
+          };
+        }
+        return {
+          output: JSON.stringify({
+            status: "already_stopped",
+            message: "Dashboard server was not running."
+          })
+        };
+      }
+      if (serverProcess && !serverProcess.killed) {
+        return {
+          output: JSON.stringify({
+            status: "already_running",
+            port: serverPort,
+            url: `http://localhost:${serverPort}`,
+            message: `Dashboard is already running at http://localhost:${serverPort}`
+          })
+        };
+      }
+      const dashboardDir = join18(ctx.workDir, "dashboard");
+      serverProcess = spawn("bun", ["run", "server/src/server.ts"], {
+        cwd: dashboardDir,
+        stdio: "ignore",
+        detached: true
+      });
+      serverProcess.on("error", (err) => {
+        console.error("Dashboard server failed to start:", err.message);
+        serverProcess = null;
+      });
+      serverProcess.on("exit", () => {
+        serverProcess = null;
+      });
+      await new Promise((r) => setTimeout(r, 1500));
+      return {
+        output: JSON.stringify({
+          status: "started",
+          port: serverPort,
+          url: `http://localhost:${serverPort}`,
+          message: `Dashboard server started at http://localhost:${serverPort}
+
+Open this URL in your browser to view the project dashboard with real-time pipeline status, virality scores, costs, artifacts, and history.`
+        })
+      };
+    }
+  });
+}
+
 // src/index.ts
 var DIRECTOR_MODE_PROMPT = `You are now in **Brandly Director Mode** \u2014 an autonomous video production pipeline.
 
@@ -17897,6 +17983,12 @@ After project initialization, follow this phase pipeline:
 7. **validate** \u2014 Quality checks and virality scoring
 8. **publish** \u2014 Export final video with captions
 
+## Dashboard
+When the user asks to **see information**, **view progress**, **check status**, **open dashboard**, or any similar request to visualize the project:
+- Call \`brandly_dashboard\` with action="open" to start the dashboard and get the URL
+- The dashboard shows real-time pipeline, virality scores, costs, artifacts, and history
+- If already running, it returns the existing URL
+
 ## Rules
 - Check \`brandly_status\` before each phase
 - Use \`brandly_estimate\` to check budget before expensive operations
@@ -17904,6 +17996,7 @@ After project initialization, follow this phase pipeline:
 - Record costs with \`brandly_record_cost\` after paid operations
 - Save artifacts with \`brandly_save_artifact\`
 - Track decisions with \`brandly_memory\`
+- When user wants to see project info, run \`brandly_dashboard\`
 
 ## Communication Style
 - Be concise and action-oriented
@@ -17942,7 +18035,8 @@ var BrandlyPlugin = async (input) => {
       brandly_auto_caption: createAutoCaptionTool(ctx),
       brandly_scene_consistency: createSceneConsistencyTool(ctx),
       brandly_character_consistency: createCharacterConsistencyTool(ctx),
-      brandly_motion_graphics: createMotionGraphicsTool(ctx)
+      brandly_motion_graphics: createMotionGraphicsTool(ctx),
+      brandly_dashboard: createDashboardTool(ctx)
     },
     "command.execute.before": async (input2, output) => {
       const { command, arguments: args } = input2;

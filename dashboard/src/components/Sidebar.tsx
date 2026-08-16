@@ -9,6 +9,7 @@ interface Props {
 }
 
 export default function Sidebar({ projects, selectedProject, onSelectProject }: Props) {
+
   return (
     <aside className="sidebar">
       <div className="logo">
@@ -20,11 +21,19 @@ export default function Sidebar({ projects, selectedProject, onSelectProject }: 
       </div>
 
       <div className="nav-section-label">Navigation</div>
-      <NavButton to="/" icon="◈" label="Overview" current="/" />
-      <NavButton to="/projects" icon="▤" label="Projects" current="/projects" />
-      <NavButton to="/validate" icon="◎" label="Validate" current="/validate" />
+      <NavButton to="/" icon="◈" label="Overview" />
+      <NavButton to="/projects" icon="▤" label="Projects" />
+      <NavButton to="/validate" icon="◎" label="Validate" />
+      <NavButton to="/artifacts" icon="📦" label="Artifacts" />
+      <NavButton to="/costs" icon="💰" label="Costs" />
+      <NavButton to="/history" icon="📋" label="History" />
 
-      <div className="nav-section-label" style={{ marginTop: 16 }}>Projects</div>
+      <div className="nav-section-label" style={{ marginTop: 16 }}>Projects ({projects.length})</div>
+      {projects.length === 0 && (
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', padding: '8px 12px' }}>
+          No projects yet
+        </div>
+      )}
       {projects.map(p => (
         <button
           key={p.id}
@@ -37,19 +46,21 @@ export default function Sidebar({ projects, selectedProject, onSelectProject }: 
             <span style={{ flex: 1, fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
             {statusBadge(p.status)}
           </div>
-          <div style={{ fontSize: 10, color: 'var(--text-muted)', paddingLeft: 20 }}>{p.currentPhase} • {p.provider}</div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', paddingLeft: 20 }}>
+            {p.currentPhase} • {p.provider}
+          </div>
         </button>
       ))}
     </aside>
   )
 }
 
-function NavButton({ to, icon, label, current }: { to: string; icon: string; label: string; current: string }) {
+function NavButton({ to, icon, label }: { to: string; icon: string; label: string }) {
   const navigate = useNavigate()
-  const active = current === to || (current === '/' && to === '/')
+  const isActive = window.location.pathname === to || (to === '/' && window.location.pathname === '/')
   return (
     <button
-      className={`nav-item ${active ? 'active' : ''}`}
+      className={`nav-item ${isActive ? 'active' : ''}`}
       onClick={() => navigate(to)}
     >
       <span className="nav-icon">{icon}</span>
