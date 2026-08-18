@@ -169,7 +169,7 @@ export function createCharacterConsistencyTool(ctx: ToolContext) {
         case "create_character": {
           const name = args.name;
           if (!name) {
-            return { output: JSON.stringify({ success: false, error: "Name is required" }) };
+            return { success: false, error: "Name is required" };
           }
 
           const character: CharacterProfile = {
@@ -192,23 +192,21 @@ export function createCharacterConsistencyTool(ctx: ToolContext) {
           saveCharacters(ctx, characters);
 
           return {
-            output: JSON.stringify({
               success: true,
               character,
               message: `Character "${name}" created with ID: ${character.id}`,
-            }),
-          };
+            };
         }
 
         case "update_character": {
           const charId = args.characterId;
           if (!charId) {
-            return { output: JSON.stringify({ success: false, error: "characterId is required" }) };
+            return { success: false, error: "characterId is required" };
           }
 
           const index = characters.findIndex((c) => c.id === charId);
           if (index === -1) {
-            return { output: JSON.stringify({ success: false, error: `Character ${charId} not found` }) };
+            return { success: false, error: `Character ${charId} not found` };
           }
 
           const existing = characters[index];
@@ -221,82 +219,78 @@ export function createCharacterConsistencyTool(ctx: ToolContext) {
           characters[index] = existing;
           saveCharacters(ctx, characters);
 
-          return { output: JSON.stringify({ success: true, character: existing }) };
+          return { success: true, character: existing };
         }
 
         case "get_character": {
           const charId = args.characterId;
           if (!charId) {
-            return { output: JSON.stringify({ success: false, error: "characterId is required" }) };
+            return { success: false, error: "characterId is required" };
           }
 
           const character = characters.find((c) => c.id === charId);
           if (!character) {
-            return { output: JSON.stringify({ success: false, error: `Character ${charId} not found` }) };
+            return { success: false, error: `Character ${charId} not found` };
           }
 
-          return { output: JSON.stringify({ success: true, character }) };
+          return { success: true, character };
         }
 
         case "list_characters": {
           return {
-            output: JSON.stringify({
               success: true,
               characters,
               count: characters.length,
-            }),
-          };
+            };
         }
 
         case "delete_character": {
           const charId = args.characterId;
           if (!charId) {
-            return { output: JSON.stringify({ success: false, error: "characterId is required" }) };
+            return { success: false, error: "characterId is required" };
           }
 
           const filtered = characters.filter((c) => c.id !== charId);
           if (filtered.length === characters.length) {
-            return { output: JSON.stringify({ success: false, error: `Character ${charId} not found` }) };
+            return { success: false, error: `Character ${charId} not found` };
           }
 
           saveCharacters(ctx, filtered);
-          return { output: JSON.stringify({ success: true, message: `Character ${charId} deleted` }) };
+          return { success: true, message: `Character ${charId} deleted` };
         }
 
         case "add_reference_image": {
           const charId = args.characterId;
           const imageUrl = args.referenceImages?.[0];
           if (!charId || !imageUrl) {
-            return { output: JSON.stringify({ success: false, error: "characterId and referenceImages[0] are required" }) };
+            return { success: false, error: "characterId and referenceImages[0] are required" };
           }
 
           const character = characters.find((c) => c.id === charId);
           if (!character) {
-            return { output: JSON.stringify({ success: false, error: `Character ${charId} not found` }) };
+            return { success: false, error: `Character ${charId} not found` };
           }
 
           character.references.images.push(imageUrl);
           saveCharacters(ctx, characters);
 
           return {
-            output: JSON.stringify({
               success: true,
               message: `Added reference image to ${character.name}`,
               referenceCount: character.references.images.length,
-            }),
-          };
+            };
         }
 
         case "remove_reference_image": {
           const charId = args.characterId;
           const imageUrl = args.referenceImages?.[0];
           if (!charId || !imageUrl) {
-            return { output: JSON.stringify({ success: false, error: "characterId and referenceImages[0] are required" }) };
+            return { success: false, error: "characterId and referenceImages[0] are required" };
           }
 
           const character = characters.find((c) => c.id === charId);
           if (!character) {
-            return { output: JSON.stringify({ success: false, error: `Character ${charId} not found` }) };
+            return { success: false, error: `Character ${charId} not found` };
           }
 
           character.references.images = character.references.images.filter(
@@ -305,23 +299,21 @@ export function createCharacterConsistencyTool(ctx: ToolContext) {
           saveCharacters(ctx, characters);
 
           return {
-            output: JSON.stringify({
               success: true,
               message: `Removed reference image from ${character.name}`,
               referenceCount: character.references.images.length,
-            }),
-          };
+            };
         }
 
         case "create_consistency_guide": {
           const charId = args.characterId;
           if (!charId) {
-            return { output: JSON.stringify({ success: false, error: "characterId is required" }) };
+            return { success: false, error: "characterId is required" };
           }
 
           const character = characters.find((c) => c.id === charId);
           if (!character) {
-            return { output: JSON.stringify({ success: false, error: `Character ${charId} not found` }) };
+            return { success: false, error: `Character ${charId} not found` };
           }
 
           const guide: ConsistencyGuide = {
@@ -335,38 +327,36 @@ export function createCharacterConsistencyTool(ctx: ToolContext) {
           saveGuides(ctx, filteredGuides);
 
           return {
-            output: JSON.stringify({
               success: true,
               guide,
               message: `Consistency guide created for "${character.name}"`,
-            }),
-          };
+            };
         }
 
         case "get_consistency_guide": {
           const charId = args.characterId;
           if (!charId) {
-            return { output: JSON.stringify({ success: false, error: "characterId is required" }) };
+            return { success: false, error: "characterId is required" };
           }
 
           const guide = guides.find((g) => g.characterId === charId);
           if (!guide) {
-            return { output: JSON.stringify({ success: false, error: `No guide found for character ${charId}` }) };
+            return { success: false, error: `No guide found for character ${charId}` };
           }
 
-          return { output: JSON.stringify({ success: true, guide }) };
+          return { success: true, guide };
         }
 
         case "score_consistency": {
           const charId = args.characterId;
           const shots = args.shots || [];
           if (!charId) {
-            return { output: JSON.stringify({ success: false, error: "characterId is required" }) };
+            return { success: false, error: "characterId is required" };
           }
 
           const character = characters.find((c) => c.id === charId);
           if (!character) {
-            return { output: JSON.stringify({ success: false, error: `Character ${charId} not found` }) };
+            return { success: false, error: `Character ${charId} not found` };
           }
 
           let score = 0.5;
@@ -393,7 +383,6 @@ export function createCharacterConsistencyTool(ctx: ToolContext) {
           saveCharacters(ctx, characters);
 
           return {
-            output: JSON.stringify({
               success: true,
               characterId: charId,
               characterName: character.name,
@@ -414,20 +403,19 @@ export function createCharacterConsistencyTool(ctx: ToolContext) {
                       "Add clothing/style notes",
                     ]
                   : ["Good consistency foundation"],
-            }),
-          };
+            };
         }
 
         case "generate_kling_prompt": {
           const charId = args.characterId;
           const projectDesc = args.projectDescription || "";
           if (!charId) {
-            return { output: JSON.stringify({ success: false, error: "characterId is required" }) };
+            return { success: false, error: "characterId is required" };
           }
 
           const character = characters.find((c) => c.id === charId);
           if (!character) {
-            return { output: JSON.stringify({ success: false, error: `Character ${charId} not found` }) };
+            return { success: false, error: `Character ${charId} not found` };
           }
 
           const prompt = [
@@ -449,15 +437,13 @@ export function createCharacterConsistencyTool(ctx: ToolContext) {
           saveCharacters(ctx, characters);
 
           return {
-            output: JSON.stringify({
               success: true,
               provider: "kling",
               prompt,
               referenceCount: character.references.images.length,
               elements3Binding: true,
               notes: "Upload reference images as Subject in Kling 3.0 Elements 3.0 library",
-            }),
-          };
+            };
         }
 
         case "generate_seedance_prompt": {
@@ -465,12 +451,12 @@ export function createCharacterConsistencyTool(ctx: ToolContext) {
           const projectDesc = args.projectDescription || "";
           const style = args.style || "cinematic";
           if (!charId) {
-            return { output: JSON.stringify({ success: false, error: "characterId is required" }) };
+            return { success: false, error: "characterId is required" };
           }
 
           const character = characters.find((c) => c.id === charId);
           if (!character) {
-            return { output: JSON.stringify({ success: false, error: `Character ${charId} not found` }) };
+            return { success: false, error: `Character ${charId} not found` };
           }
 
           const prompt = [
@@ -491,27 +477,25 @@ export function createCharacterConsistencyTool(ctx: ToolContext) {
           saveCharacters(ctx, characters);
 
           return {
-            output: JSON.stringify({
               success: true,
               provider: "seedance",
               prompt,
               referenceCount: character.references.images.length,
               characterLock: true,
               notes: "Upload reference images as Visual Reference in Seedance 2.5",
-            }),
-          };
+            };
         }
 
         case "generate_higgsfield_prompt": {
           const charId = args.characterId;
           const projectDesc = args.projectDescription || "";
           if (!charId) {
-            return { output: JSON.stringify({ success: false, error: "characterId is required" }) };
+            return { success: false, error: "characterId is required" };
           }
 
           const character = characters.find((c) => c.id === charId);
           if (!character) {
-            return { output: JSON.stringify({ success: false, error: `Character ${charId} not found` }) };
+            return { success: false, error: `Character ${charId} not found` };
           }
 
           const prompt = [
@@ -533,7 +517,6 @@ export function createCharacterConsistencyTool(ctx: ToolContext) {
           saveCharacters(ctx, characters);
 
           return {
-            output: JSON.stringify({
               success: true,
               provider: "higgsfield",
               prompt,
@@ -542,19 +525,18 @@ export function createCharacterConsistencyTool(ctx: ToolContext) {
               notes: character.providers.higgsfield?.soulId
                 ? "Use Soul ID for identity-faithful generation"
                 : "Train Soul ID first with 4-10 reference images",
-            }),
-          };
+            };
         }
 
         case "export_character_bible": {
           const charId = args.characterId;
           if (!charId) {
-            return { output: JSON.stringify({ success: false, error: "characterId is required" }) };
+            return { success: false, error: "characterId is required" };
           }
 
           const character = characters.find((c) => c.id === charId);
           if (!character) {
-            return { output: JSON.stringify({ success: false, error: `Character ${charId} not found` }) };
+            return { success: false, error: `Character ${charId} not found` };
           }
 
           const guide = guides.find((g) => g.characterId === charId);
@@ -588,28 +570,25 @@ export function createCharacterConsistencyTool(ctx: ToolContext) {
                   "Use high-quality, well-lit photos",
                   "Include multiple angles",
                   "Training takes ~10 minutes",
-                ],
+                 ],
               },
             },
-            exportDate: new Date().toISOString(),
           };
 
-          const biblePath = join(ctx.artifactsDir, `character-bible-${charId}.json`);
+           const biblePath = join(ctx.artifactsDir, `character-bible-${charId}.json`);
           writeFileSync(biblePath, JSON.stringify(bible, null, 2));
 
           return {
-            output: JSON.stringify({
               success: true,
               bible,
               savedTo: biblePath,
-            }),
-          };
+            };
         }
 
         case "breakdown_script": {
           const script = args.script;
           if (!script) {
-            return { output: JSON.stringify({ success: false, error: "script is required" }) };
+            return { success: false, error: "script is required" };
           }
 
           const shotDuration = args.shotDuration || 5;
@@ -769,9 +748,7 @@ export function createCharacterConsistencyTool(ctx: ToolContext) {
             })),
           };
 
-          return {
-            output: JSON.stringify({
-              success: true,
+          return { success: true,
               breakdown: {
                 sceneCount: scenes.length,
                 shotCount: shotList.length,
@@ -798,12 +775,11 @@ export function createCharacterConsistencyTool(ctx: ToolContext) {
                   ? `Create character profiles for: ${matchedCharacters.filter((c) => c.needsCreation).map((c) => c.name).join(", ")}`
                   : "All characters have existing profiles",
               },
-            }),
           };
         }
 
         default:
-          return { output: JSON.stringify({ success: false, error: `Unknown action: ${action}` }) };
+          throw new Error(`Unknown action: ${action}`);
       }
     },
   });

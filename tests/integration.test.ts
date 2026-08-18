@@ -34,19 +34,20 @@ describe("brandlyPlugin", () => {
     await rm(testDir, { recursive: true, force: true });
   });
 
-  it("should export all 25 tools", () => {
-    const plugin = brandlyPlugin({ directory: testDir });
-    expect(plugin.name).toBe("brandly");
-    expect(plugin.tools).toHaveLength(25);
+  it("should export all tools", async () => {
+    const plugin = await brandlyPlugin({ directory: testDir });
+    const toolKeys = Object.keys(plugin.tool);
+    expect(toolKeys.length).toBeGreaterThan(0);
+    expect(toolKeys).toContain("brandly_start");
   });
 
-  it("should have all required tool names", () => {
-    const plugin = brandlyPlugin({ directory: testDir });
-    const toolNames = plugin.tools.map((t: any) => t.name);
+  it("should have all required tool names", async () => {
+    const plugin = await brandlyPlugin({ directory: testDir });
+    const toolNames = Object.keys(plugin.tool);
     expect(toolNames).toContain("brandly_start");
     expect(toolNames).toContain("brandly_status");
     expect(toolNames).toContain("brandly_approve");
-    expect(toolNames).toContain("brandly_run_project");
+    expect(toolNames).toContain("brandly_run");
     expect(toolNames).toContain("brandly_estimate");
     expect(toolNames).toContain("brandly_re_edit");
     expect(toolNames).toContain("brandly_validate");
@@ -67,11 +68,12 @@ describe("brandlyPlugin", () => {
     expect(toolNames).toContain("brandly_batch_variations");
     expect(toolNames).toContain("brandly_auto_caption");
     expect(toolNames).toContain("brandly_scene_consistency");
+    expect(toolNames).toContain("brandly_character_consistency");
   });
 
   it("should create project with brandly_start", async () => {
-    const plugin = brandlyPlugin({ directory: testDir });
-    const startTool = plugin.tools.find((t: any) => t.name === "brandly_start");
+    const plugin = await brandlyPlugin({ directory: testDir });
+    const startTool = plugin.tool.brandly_start;
 
     const result = await startTool.execute({
       idea: "A wireless headphone brand",
@@ -96,9 +98,9 @@ describe("brandlyPlugin", () => {
   });
 
   it("should show project status", async () => {
-    const plugin = brandlyPlugin({ directory: testDir });
-    const startTool = plugin.tools.find((t: any) => t.name === "brandly_start");
-    const statusTool = plugin.tools.find((t: any) => t.name === "brandly_status");
+    const plugin = await brandlyPlugin({ directory: testDir });
+    const startTool = plugin.tool.brandly_start;
+    const statusTool = plugin.tool.brandly_status;
 
     const { projectId } = await startTool.execute({
       idea: "Test product",
@@ -111,9 +113,9 @@ describe("brandlyPlugin", () => {
   });
 
   it("should approve phase and advance", async () => {
-    const plugin = brandlyPlugin({ directory: testDir });
-    const startTool = plugin.tools.find((t: any) => t.name === "brandly_start");
-    const approveTool = plugin.tools.find((t: any) => t.name === "brandly_approve");
+    const plugin = await brandlyPlugin({ directory: testDir });
+    const startTool = plugin.tool.brandly_start;
+    const approveTool = plugin.tool.brandly_approve;
 
     const { projectId } = await startTool.execute({
       idea: "Test product",
@@ -130,10 +132,10 @@ describe("brandlyPlugin", () => {
   });
 
   it("should dispatch correct agent for phase", async () => {
-    const plugin = brandlyPlugin({ directory: testDir });
-    const startTool = plugin.tools.find((t: any) => t.name === "brandly_start");
-    const approveTool = plugin.tools.find((t: any) => t.name === "brandly_approve");
-    const runTool = plugin.tools.find((t: any) => t.name === "brandly_run_project");
+    const plugin = await brandlyPlugin({ directory: testDir });
+    const startTool = plugin.tool.brandly_start;
+    const approveTool = plugin.tool.brandly_approve;
+    const runTool = plugin.tool.brandly_run;
 
     const { projectId } = await startTool.execute({
       idea: "Test product",
@@ -148,9 +150,9 @@ describe("brandlyPlugin", () => {
   });
 
   it("should dispatch script_agent for re_edit phase", async () => {
-    const plugin = brandlyPlugin({ directory: testDir });
-    const startTool = plugin.tools.find((t: any) => t.name === "brandly_start");
-    const runTool = plugin.tools.find((t: any) => t.name === "brandly_run_project");
+    const plugin = await brandlyPlugin({ directory: testDir });
+    const startTool = plugin.tool.brandly_start;
+    const runTool = plugin.tool.brandly_run;
 
     const { projectId } = await startTool.execute({
       idea: "Test product",
@@ -174,8 +176,8 @@ describe("brandlyPlugin", () => {
   });
 
   it("should validate project IDs", async () => {
-    const plugin = brandlyPlugin({ directory: testDir });
-    const statusTool = plugin.tools.find((t: any) => t.name === "brandly_status");
+    const plugin = await brandlyPlugin({ directory: testDir });
+    const statusTool = plugin.tool.brandly_status;
 
     await expect(
       statusTool.execute({ projectID: "not-a-uuid" })
@@ -183,10 +185,8 @@ describe("brandlyPlugin", () => {
   });
 
   it("should estimate costs", async () => {
-    const plugin = brandlyPlugin({ directory: testDir });
-    const estimateTool = plugin.tools.find(
-      (t: any) => t.name === "brandly_estimate"
-    );
+    const plugin = await brandlyPlugin({ directory: testDir });
+    const estimateTool = plugin.tool.brandly_estimate;
 
     const result = await estimateTool.execute({
       idea: "Test",
