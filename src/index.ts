@@ -28,8 +28,10 @@ import { createSceneConsistencyTool } from "./tools/scene-consistency"
 import { createCharacterConsistencyTool } from "./tools/character-consistency"
 import { createMotionGraphicsTool } from "./tools/motion-graphics"
 import { createDashboardTool } from "./tools/dashboard"
+import { createVideoGenerateTool } from "./tools/video-generate"
 
-const DIRECTOR_MODE_PROMPT = `You are now in **Brandly Director Mode** — an autonomous video production pipeline.
+const DIRECTOR_SECTIONS = {
+  INTRO: `You are now in **Brandly Director Mode** — an autonomous video production pipeline.
 
 ## Your Role
 You are the **Director**. Your job is to guide the creation of a professional product video from concept to final render using the Brandly toolset.
@@ -39,9 +41,9 @@ You are the **Director**. Your job is to guide the creation of a professional pr
 2. Ask about **video style** preference: cinematic, ugc, montage, multi_shot, continuous, unboxing, lifestyle, collage_motion_graphic, brand_short_video, or explainer_video
 3. Ask about **target platforms** (TikTok, Instagram, YouTube, or all)
 4. Ask about **budget** (max credits to spend, default 500)
-5. Once you have this info, immediately call \`brandly_start\` to create the project
+5. Once you have this info, immediately call \`brandly_start\` to create the project`,
 
-## Director Workflow
+  PIPELINE: `## Pipeline (provider → analyze → start → run → approve → validate → publish)
 After project initialization, follow this phase pipeline:
 1. **trends** — Research trending styles for this product category
 2. **concept** — Create creative concept and mood board
@@ -50,15 +52,15 @@ After project initialization, follow this phase pipeline:
 5. **audio** — Create music, SFX, voiceover
 6. **re_edit** — Review and refine
 7. **validate** — Quality checks and virality scoring
-8. **publish** — Export final video with captions
+8. **publish** — Export final video with captions`,
 
-## Dashboard
+  DASHBOARD: `## Dashboard
 When the user asks to **see information**, **view progress**, **check status**, **open dashboard**, or any similar request to visualize the project:
 - Call \`brandly_dashboard\` with action="open" to start the dashboard and get the URL
 - The dashboard shows real-time pipeline, virality scores, costs, artifacts, and history
-- If already running, it returns the existing URL
+- If already running, it returns the existing URL`,
 
-## Rules
+  RULES: `## Rules
 - Check \`brandly_status\` before each phase
 - Use \`brandly_estimate\` to check budget before expensive operations
 - Get user approval via \`brandly_approve\` before proceeding
@@ -73,9 +75,17 @@ When the user asks to **see information**, **view progress**, **check status**, 
 - Present options, let user decide on creative direction
 - Explain what you're about to do before doing it
 
-**Start by greeting the user and asking for their product information.**`
+**Start by greeting the user and asking for their product information.**`,
+};
 
-export const BrandlyPlugin: Plugin = async (input) => {
+const DIRECTOR_MODE_PROMPT = [
+  DIRECTOR_SECTIONS.INTRO,
+  DIRECTOR_SECTIONS.PIPELINE,
+  DIRECTOR_SECTIONS.DASHBOARD,
+  DIRECTOR_SECTIONS.RULES,
+].join("\n\n");
+
+export default async (input: { directory: string }) => {
   const { directory } = input
   const ctx = createContext(directory)
 
@@ -108,6 +118,7 @@ export const BrandlyPlugin: Plugin = async (input) => {
       brandly_character_consistency: createCharacterConsistencyTool(ctx),
       brandly_motion_graphics: createMotionGraphicsTool(ctx),
       brandly_dashboard: createDashboardTool(ctx),
+      brandly_video_generate: createVideoGenerateTool(ctx),
     },
 
     "command.execute.before": async (input, output) => {

@@ -121,6 +121,25 @@ export const AVAILABLE_PROVIDERS: ProviderConfig[] = [
       "Social media content",
       "Quick iterations"
     ]
+  },
+  {
+    id: "agnes",
+    name: "Agnes AI",
+    description: "Multimodal AI platform with image and video generation via OpenAI-compatible API",
+    capabilities: ["image", "video"],
+    models: [
+      "agnes-image-2.1-flash",
+      "agnes-image-2.0-flash",
+      "agnes-video-v2.0",
+      "agnes-video-2.5"
+    ],
+    bestFor: [
+      "High-information-density images",
+      "Text-to-video generation",
+      "Image-to-video animation",
+      "Keyframe transitions",
+      "Budget-friendly (currently free)"
+    ]
   }
 ];
 
@@ -154,12 +173,10 @@ export function createProviderTool(ctx: ToolContext) {
         }));
 
         return {
-          output: JSON.stringify({
-            status: "listed",
-            providers,
-            message: `Found ${providers.length} available providers. Select one by ID.`,
-            recommendation: getProviderRecommendation(),
-          }),
+          status: "listed",
+          providers,
+          message: `Found ${providers.length} available providers. Select one by ID.`,
+          recommendation: getProviderRecommendation(),
         };
       }
 
@@ -200,22 +217,20 @@ export function createProviderTool(ctx: ToolContext) {
       }
 
       return {
-        output: JSON.stringify({
-          projectId: args.projectID,
-          provider: {
-            id: provider.id,
-            name: provider.name,
-            description: provider.description,
-            capabilities: provider.capabilities,
-            models: provider.models,
-            bestFor: provider.bestFor,
-            cliCommand: provider.cliCommand,
-            mcpTool: provider.mcpTool,
-          },
-          status: "selected",
-          message: `Selected ${provider.name} for media generation`,
-          usage: getProviderUsage(provider),
-        }),
+        projectId: args.projectID,
+        provider: {
+          id: provider.id,
+          name: provider.name,
+          description: provider.description,
+          capabilities: provider.capabilities,
+          models: provider.models,
+          bestFor: provider.bestFor,
+          cliCommand: provider.cliCommand,
+          mcpTool: provider.mcpTool,
+        },
+        status: "selected",
+        message: `Selected ${provider.name} for media generation`,
+        usage: getProviderUsage(provider),
       };
     },
   });
@@ -227,12 +242,14 @@ function getProviderRecommendation(): string {
 
 • **For product videos/ads** → Higgsfield (Marketing Studio) or Runway (Gen-4.5)
 • **For character consistency** → Higgsfield (Soul 2.0) or Kling (Omni)
-• **For budget-friendly** → Kling 3.0 or OpenArt
+• **For budget-friendly** → Kling 3.0, OpenArt, or Agnes AI (currently free)
 • **For cinematic quality** → Runway (Gen-4.5) or Higgsfield (Cinema Studio)
 • **For Chinese market** → Kling AI (可灵)
 • **For image upscaling** → Magnific AI
 • **For experimental/creative** → Pika or OpenArt
 • **For virality scoring** → Higgsfield (Virality Predictor)
+• **For high-density images** → Agnes AI (agnes-image-2.1-flash)
+• **For text-to-video** → Agnes AI (agnes-video-v2.0) or Runway
 `;
 }
 
@@ -298,6 +315,67 @@ Supports Gen-4.5, Gen-3 Alpha, and Act-Two for character performance.
 **Pika Usage:**
 Visit https://pika.art and use their web interface or API.
 Specialized for stylized and experimental video content.
+`;
+    case "agnes":
+      return `
+**Agnes AI Usage:**
+
+Set your API key: \`export AGNES_API_KEY=your_key\`
+
+\`\`\`bash
+# Image generation (text-to-image)
+curl -X POST https://apihub.agnes-ai.com/v1/images/generations \\
+  -H "Authorization: Bearer $AGNES_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "model": "agnes-image-2.1-flash",
+    "prompt": "A cinematic product hero image",
+    "size": "2K",
+    "ratio": "16:9",
+    "extra_body": { "response_format": "url" }
+  }'
+
+# Image-to-image
+curl -X POST https://apihub.agnes-ai.com/v1/images/generations \\
+  -H "Authorization: Bearer $AGNES_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "model": "agnes-image-2.1-flash",
+    "prompt": "Transform into cyberpunk style",
+    "size": "2K",
+    "extra_body": {
+      "image": ["https://example.com/input.png"],
+      "response_format": "url"
+    }
+  }'
+
+# Video generation (text-to-video)
+curl -X POST https://apihub.agnes-ai.com/v1/videos \\
+  -H "Authorization: Bearer $AGNES_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "model": "agnes-video-v2.0",
+    "prompt": "Cinematic product showcase with smooth camera movement",
+    "num_frames": 121,
+    "frame_rate": 24
+  }'
+
+# Image-to-video
+curl -X POST https://apihub.agnes-ai.com/v1/videos \\
+  -H "Authorization: Bearer $AGNES_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "model": "agnes-video-v2.0",
+    "prompt": "Animate the product with subtle rotation",
+    "image": "https://example.com/product.png",
+    "num_frames": 121,
+    "frame_rate": 24
+  }'
+\`\`\`
+
+Or use the plugin tools:
+- \`brandly_analyze_image\` with \`generatePrompt\` for image generation
+- \`brandly_video_generate\` for AI video generation
 `;
     default:
       return "";
